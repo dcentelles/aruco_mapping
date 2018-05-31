@@ -48,7 +48,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <aruco/aruco.h>
 #include <aruco/cameraparameters.h>
 #include <aruco/cvdrawingutils.h>
-#include <aruco/arucofidmarkers.h>
 
 // OpenCV libraries
 #include <opencv2/opencv.hpp>
@@ -138,6 +137,9 @@ private:
 
   aruco::CameraParameters aruco_calib_params_;
 
+  aruco::MarkerDetector detector_;
+  cv::Mat last_image_;
+
   int marker_counter_;
   int marker_counter_previous_;
   int closest_camera_index_;
@@ -151,18 +153,18 @@ private:
    static const int CV_WAIT_KEY = 10;
    static const int CV_WINDOW_MARKER_LINE_WIDTH = 2;
 
-   static const double WAIT_FOR_TRANSFORM_INTERVAL = 2.0;
-   static const double BROADCAST_WAIT_INTERVAL = 0.0001;
-   static const double INIT_MIN_SIZE_VALUE = 1000000;
+   static constexpr double WAIT_FOR_TRANSFORM_INTERVAL = 2.0;
+   static constexpr double BROADCAST_WAIT_INTERVAL = 0.0001;
+   static constexpr double INIT_MIN_SIZE_VALUE = 1000000;
 
-   static const double RVIZ_MARKER_HEIGHT = 0.01;
-   static const double RVIZ_MARKER_LIFETIME = 0.2;
-   static const double RVIZ_MARKER_COLOR_R = 1.0;
-   static const double RVIZ_MARKER_COLOR_G = 1.0;
-   static const double RVIZ_MARKER_COLOR_B = 1.0;
-   static const double RVIZ_MARKER_COLOR_A = 1.0;
+   static constexpr double RVIZ_MARKER_HEIGHT = 0.01;
+   static constexpr double RVIZ_MARKER_LIFETIME = 0.2;
+   static constexpr double RVIZ_MARKER_COLOR_R = 1.0;
+   static constexpr double RVIZ_MARKER_COLOR_G = 1.0;
+   static constexpr double RVIZ_MARKER_COLOR_B = 1.0;
+   static constexpr double RVIZ_MARKER_COLOR_A = 1.0;
 
-   static const double THIS_IS_FIRST_MARKER = -2;
+   static constexpr double THIS_IS_FIRST_MARKER = -2;
 
 }; //ArucoMapping class
 }  //aruco_mapping namespace

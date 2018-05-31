@@ -33,7 +33,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include    <ros/ros.h>
 #include    <image_transport/image_transport.h>
-#include    <aruco_mapping.h>
+#include    <aruco_mapping/aruco_mapping.h>
 
 int
 main(int argc, char **argv)

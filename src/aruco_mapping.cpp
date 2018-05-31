@@ -34,7 +34,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef ARUCO_MAPPING_CPP
 #define ARUCO_MAPPING_CPP
 
-#include <aruco_mapping.h>
+#include <aruco_mapping/aruco_mapping.h>
 
 namespace aruco_mapping
 {
@@ -171,17 +171,17 @@ ArucoMapping::imageCallback(const sensor_msgs::ImageConstPtr &original_image)
   }
   
   // sensor_msgs::Image to OpenCV Mat structure
-  cv::Mat I = cv_ptr->image;
+  last_image_ = cv_ptr->image;
   
   // region of interest
   if(roi_allowed_==true)
-    I = cv_ptr->image(cv::Rect(roi_x_,roi_y_,roi_w_,roi_h_));
+    last_image_ = cv_ptr->image(cv::Rect(roi_x_,roi_y_,roi_w_,roi_h_));
 
   //Marker detection
-  processImage(I,I);
+  processImage(last_image_,last_image_);
   
   // Show image
-  cv::imshow("Mono8", I);
+  cv::imshow("Mono8", last_image_);
   cv::waitKey(10);  
 }
 
@@ -189,7 +189,7 @@ ArucoMapping::imageCallback(const sensor_msgs::ImageConstPtr &original_image)
 bool
 ArucoMapping::processImage(cv::Mat input_image,cv::Mat output_image)
 {
-  aruco::MarkerDetector Detector;
+  detector_.setDetectionMode (aruco::DetectionMode::DM_FAST);
   std::vector<aruco::Marker> temp_markers;
 
   //Set visibility flag to false for all markers
@@ -200,7 +200,7 @@ ArucoMapping::processImage(cv::Mat input_image,cv::Mat output_image)
   marker_counter_previous_ = marker_counter_;
 
   // Detect markers
-  Detector.detect(input_image,temp_markers,aruco_calib_params_,marker_size_);
+  detector_.detect(input_image,temp_markers,aruco_calib_params_,marker_size_);
     
   // If no marker found, print statement
   if(temp_markers.size() == 0)
