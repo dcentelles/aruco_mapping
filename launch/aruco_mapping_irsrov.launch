@@ -7,7 +7,7 @@
   <node pkg="aruco_mapping" type="aruco_mapping" name="aruco_mapping" output="screen">
     <param name="image" type="string" value="/camera/image"/>
     <param name="image_transport" type="string" value="compressed" />
-    <param name="calibration_file" type="string" value="$(find aruco_mapping)/data/raspicam_v1_water.ini" /> 
+    <param name="calibration_file" type="string" value="$(find aruco_mapping)/data/raspicam_v1_underwater.ini" /> 
     <param name="num_of_markers" type="int" value="200" />
     <param name="marker_size" type="double" value="0.11"/>
     <param name="space_type" type="string" value="plane" />
