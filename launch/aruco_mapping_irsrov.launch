@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<launch> 
+  <!-- RVIZ -->
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find aruco_mapping)/launch/aruco_config.rviz" />
+
+  <!-- ArUco mapping -->
+  <node pkg="aruco_mapping" type="aruco_mapping" name="aruco_mapping" output="screen">
+    <param name="image" type="string" value="/camera/image"/>
+    <param name="image_transport" type="string" value="compressed" />
+    <param name="calibration_file" type="string" value="$(find aruco_mapping)/data/raspicam_v1_water.ini" /> 
+    <param name="num_of_markers" type="int" value="200" />
+    <param name="marker_size" type="double" value="0.11"/>
+    <param name="space_type" type="string" value="plane" />
+    <param name="roi_allowed" type="bool" value="false" /> -->
+    <param name="roi_x" type="int" value="0" /> -->
+    <param name="roi_y" type="int" value="0" /> -->
+    <param name="roi_width" type="int" value="640" /> -->
+    <param name="roi_height" type="int" value="480" /> --> 
+
+  </node>  
+</launch>
