@@ -352,24 +352,25 @@ ArucoMapping::processImage(cv::Mat input_image,cv::Mat output_image)
       }
     }
 
+    auto marker_info = &markers_[index];
     //------------------------------------------------------
     // For existing marker do
     //------------------------------------------------------
     if((index < marker_counter_) && (first_marker_detected_ == true))
     {
-      markers_[index].current_camera_tf = arucoMarker2Tf(temp_markers[i]);
-      markers_[index].current_camera_tf = markers_[index].current_camera_tf.inverse();
+      marker_info->current_camera_tf = arucoMarker2Tf(temp_markers[i]);
+      marker_info->current_camera_tf = marker_info->current_camera_tf.inverse();
 
-      const tf::Vector3 marker_origin = markers_[index].current_camera_tf.getOrigin();
-      markers_[index].current_camera_pose.position.x = marker_origin.getX();
-      markers_[index].current_camera_pose.position.y = marker_origin.getY();
-      markers_[index].current_camera_pose.position.z = marker_origin.getZ();
+      const tf::Vector3 marker_origin = marker_info->current_camera_tf.getOrigin();
+      marker_info->current_camera_pose.position.x = marker_origin.getX();
+      marker_info->current_camera_pose.position.y = marker_origin.getY();
+      marker_info->current_camera_pose.position.z = marker_origin.getZ();
 
-      const tf::Quaternion marker_quaternion = markers_[index].current_camera_tf.getRotation();
-      markers_[index].current_camera_pose.orientation.x = marker_quaternion.getX();
-      markers_[index].current_camera_pose.orientation.y = marker_quaternion.getY();
-      markers_[index].current_camera_pose.orientation.z = marker_quaternion.getZ();
-      markers_[index].current_camera_pose.orientation.w = marker_quaternion.getW();
+      const tf::Quaternion marker_quaternion = marker_info->current_camera_tf.getRotation();
+      marker_info->current_camera_pose.orientation.x = marker_quaternion.getX();
+      marker_info->current_camera_pose.orientation.y = marker_quaternion.getY();
+      marker_info->current_camera_pose.orientation.z = marker_quaternion.getZ();
+      marker_info->current_camera_pose.orientation.w = marker_quaternion.getW();
     }
 
     //------------------------------------------------------
@@ -377,25 +378,25 @@ ArucoMapping::processImage(cv::Mat input_image,cv::Mat output_image)
     //------------------------------------------------------
     if((index == marker_counter_) && (first_marker_detected_ == true))
     {
-      markers_[index].current_camera_tf=arucoMarker2Tf(temp_markers[i]);
+      marker_info->current_camera_tf=arucoMarker2Tf(temp_markers[i]);
 
-      tf::Vector3 marker_origin = markers_[index].current_camera_tf.getOrigin();
-      markers_[index].current_camera_pose.position.x = marker_origin.getX();
-      markers_[index].current_camera_pose.position.y = marker_origin.getY();
-      markers_[index].current_camera_pose.position.z = marker_origin.getZ();
+      tf::Vector3 marker_origin = marker_info->current_camera_tf.getOrigin();
+      marker_info->current_camera_pose.position.x = marker_origin.getX();
+      marker_info->current_camera_pose.position.y = marker_origin.getY();
+      marker_info->current_camera_pose.position.z = marker_origin.getZ();
 
-      tf::Quaternion marker_quaternion = markers_[index].current_camera_tf.getRotation();
-      markers_[index].current_camera_pose.orientation.x = marker_quaternion.getX();
-      markers_[index].current_camera_pose.orientation.y = marker_quaternion.getY();
-      markers_[index].current_camera_pose.orientation.z = marker_quaternion.getZ();
-      markers_[index].current_camera_pose.orientation.w = marker_quaternion.getW();
+      tf::Quaternion marker_quaternion = marker_info->current_camera_tf.getRotation();
+      marker_info->current_camera_pose.orientation.x = marker_quaternion.getX();
+      marker_info->current_camera_pose.orientation.y = marker_quaternion.getY();
+      marker_info->current_camera_pose.orientation.z = marker_quaternion.getZ();
+      marker_info->current_camera_pose.orientation.w = marker_quaternion.getW();
 
       // Naming - TFs
       std::stringstream camera_tf_id;
       std::stringstream camera_tf_id_old;
       std::stringstream marker_tf_id_old;
 
-      camera_tf_id << "camera_" << markers_[index].marker_id;
+      camera_tf_id << "camera_" << marker_info->marker_id;
 
       // Flag to keep info if any_known marker_visible in actual image
       bool any_known_marker_visible = false;
@@ -414,7 +415,7 @@ ArucoMapping::processImage(cv::Mat input_image,cv::Mat output_image)
             any_known_marker_visible = true;
             camera_tf_id_old << "camera_" << minfo->marker_id;
             marker_tf_id_old << "marker_" << minfo->marker_id;
-            markers_[index].previous_marker_id = minfo->marker_id;
+            marker_info->previous_marker_id = minfo->marker_id;
             last_marker_index = k;
            }
          }
@@ -431,7 +432,7 @@ ArucoMapping::processImage(cv::Mat input_image,cv::Mat output_image)
                                                          marker_tf_id_old.str(),camera_tf_id_old.str()));
 
          // TF from old camera to new camera
-         broadcaster_.sendTransform(tf::StampedTransform(markers_[index].current_camera_tf,ros::Time::now(),
+         broadcaster_.sendTransform(tf::StampedTransform(marker_info->current_camera_tf,ros::Time::now(),
                                                          camera_tf_id_old.str(),camera_tf_id.str()));
 
          ros::Duration(BROADCAST_WAIT_INTERVAL).sleep();
@@ -445,11 +446,11 @@ ArucoMapping::processImage(cv::Mat input_image,cv::Mat output_image)
           broadcaster_.sendTransform(tf::StampedTransform(markers_[last_marker_index].current_camera_tf,ros::Time::now(),
                                                           marker_tf_id_old.str(),camera_tf_id_old.str()));
 
-          broadcaster_.sendTransform(tf::StampedTransform(markers_[index].current_camera_tf,ros::Time::now(),
+          broadcaster_.sendTransform(tf::StampedTransform(marker_info->current_camera_tf,ros::Time::now(),
                                                           camera_tf_id_old.str(),camera_tf_id.str()));
 
           listener_->lookupTransform(marker_tf_id_old.str(),camera_tf_id.str(),ros::Time(0),
-                                     markers_[index].tf_to_previous);
+                                     marker_info->tf_to_previous);
         }
         catch(tf::TransformException &e)
         {
@@ -457,8 +458,8 @@ ArucoMapping::processImage(cv::Mat input_image,cv::Mat output_image)
         }
 
         // Save origin and quaternion of calculated TF
-        marker_origin = markers_[index].tf_to_previous.getOrigin();
-        marker_quaternion = markers_[index].tf_to_previous.getRotation();
+        marker_origin = marker_info->tf_to_previous.getOrigin();
+        marker_quaternion = marker_info->tf_to_previous.getRotation();
 
         // If plane type selected roll, pitch and Z axis are zero
         if(space_type_ == "plane")
@@ -471,36 +472,36 @@ ArucoMapping::processImage(cv::Mat input_image,cv::Mat output_image)
           marker_quaternion.setRPY(pitch,roll,yaw);
         }
 
-        markers_[index].tf_to_previous.setRotation(marker_quaternion);
-        markers_[index].tf_to_previous.setOrigin(marker_origin);
+        marker_info->tf_to_previous.setRotation(marker_quaternion);
+        marker_info->tf_to_previous.setOrigin(marker_origin);
 
-        marker_origin = markers_[index].tf_to_previous.getOrigin();
-        markers_[index].geometry_msg_to_previous.position.x = marker_origin.getX();
-        markers_[index].geometry_msg_to_previous.position.y = marker_origin.getY();
-        markers_[index].geometry_msg_to_previous.position.z = marker_origin.getZ();
+        marker_origin = marker_info->tf_to_previous.getOrigin();
+        marker_info->geometry_msg_to_previous.position.x = marker_origin.getX();
+        marker_info->geometry_msg_to_previous.position.y = marker_origin.getY();
+        marker_info->geometry_msg_to_previous.position.z = marker_origin.getZ();
 
-        marker_quaternion = markers_[index].tf_to_previous.getRotation();
-        markers_[index].geometry_msg_to_previous.orientation.x = marker_quaternion.getX();
-        markers_[index].geometry_msg_to_previous.orientation.y = marker_quaternion.getY();
-        markers_[index].geometry_msg_to_previous.orientation.z = marker_quaternion.getZ();
-        markers_[index].geometry_msg_to_previous.orientation.w = marker_quaternion.getW();
+        marker_quaternion = marker_info->tf_to_previous.getRotation();
+        marker_info->geometry_msg_to_previous.orientation.x = marker_quaternion.getX();
+        marker_info->geometry_msg_to_previous.orientation.y = marker_quaternion.getY();
+        marker_info->geometry_msg_to_previous.orientation.z = marker_quaternion.getZ();
+        marker_info->geometry_msg_to_previous.orientation.w = marker_quaternion.getW();
 
         // increase marker count
         marker_counter_++;
 
         // Invert and position of new marker to compute camera pose above it
-        markers_[index].current_camera_tf = markers_[index].current_camera_tf.inverse();
+        marker_info->current_camera_tf = marker_info->current_camera_tf.inverse();
 
-        marker_origin = markers_[index].current_camera_tf.getOrigin();
-        markers_[index].current_camera_pose.position.x = marker_origin.getX();
-        markers_[index].current_camera_pose.position.y = marker_origin.getY();
-        markers_[index].current_camera_pose.position.z = marker_origin.getZ();
+        marker_origin = marker_info->current_camera_tf.getOrigin();
+        marker_info->current_camera_pose.position.x = marker_origin.getX();
+        marker_info->current_camera_pose.position.y = marker_origin.getY();
+        marker_info->current_camera_pose.position.z = marker_origin.getZ();
 
-        marker_quaternion = markers_[index].current_camera_tf.getRotation();
-        markers_[index].current_camera_pose.orientation.x = marker_quaternion.getX();
-        markers_[index].current_camera_pose.orientation.y = marker_quaternion.getY();
-        markers_[index].current_camera_pose.orientation.z = marker_quaternion.getZ();
-        markers_[index].current_camera_pose.orientation.w = marker_quaternion.getW();
+        marker_quaternion = marker_info->current_camera_tf.getRotation();
+        marker_info->current_camera_pose.orientation.x = marker_quaternion.getX();
+        marker_info->current_camera_pose.orientation.y = marker_quaternion.getY();
+        marker_info->current_camera_pose.orientation.z = marker_quaternion.getZ();
+        marker_info->current_camera_pose.orientation.w = marker_quaternion.getW();
 
         // Publish all TFs and markers
         publishTfs(false);
@@ -517,14 +518,14 @@ ArucoMapping::processImage(cv::Mat input_image,cv::Mat output_image)
         publishTfs(false);
 
       std::stringstream marker_tf_name;
-      marker_tf_name << "marker_" << markers_[index].marker_id;
+      marker_tf_name << "marker_" << marker_info->marker_id;
 
       listener_->waitForTransform("base_marker",marker_tf_name.str(),ros::Time(0),
                                   ros::Duration(WAIT_FOR_TRANSFORM_INTERVAL));
       try
       {
         listener_->lookupTransform("base_marker",marker_tf_name.str(),ros::Time(0),
-                                   markers_[index].tf_to_base_marker);
+                                   marker_info->tf_to_base_marker);
       }
       catch(tf::TransformException &e)
       {
@@ -532,16 +533,16 @@ ArucoMapping::processImage(cv::Mat input_image,cv::Mat output_image)
       }
 
       // Saving TF to Pose
-      const tf::Vector3 marker_origin = markers_[index].tf_to_base_marker.getOrigin();
-      markers_[index].geometry_msg_to_base_marker.position.x = marker_origin.getX();
-      markers_[index].geometry_msg_to_base_marker.position.y = marker_origin.getY();
-      markers_[index].geometry_msg_to_base_marker.position.z = marker_origin.getZ();
+      const tf::Vector3 marker_origin = marker_info->tf_to_base_marker.getOrigin();
+      marker_info->geometry_msg_to_base_marker.position.x = marker_origin.getX();
+      marker_info->geometry_msg_to_base_marker.position.y = marker_origin.getY();
+      marker_info->geometry_msg_to_base_marker.position.z = marker_origin.getZ();
 
-      tf::Quaternion marker_quaternion=markers_[index].tf_to_base_marker.getRotation();
-      markers_[index].geometry_msg_to_base_marker.orientation.x = marker_quaternion.getX();
-      markers_[index].geometry_msg_to_base_marker.orientation.y = marker_quaternion.getY();
-      markers_[index].geometry_msg_to_base_marker.orientation.z = marker_quaternion.getZ();
-      markers_[index].geometry_msg_to_base_marker.orientation.w = marker_quaternion.getW();
+      tf::Quaternion marker_quaternion=marker_info->tf_to_base_marker.getRotation();
+      marker_info->geometry_msg_to_base_marker.orientation.x = marker_quaternion.getX();
+      marker_info->geometry_msg_to_base_marker.orientation.y = marker_quaternion.getY();
+      marker_info->geometry_msg_to_base_marker.orientation.z = marker_quaternion.getZ();
+      marker_info->geometry_msg_to_base_marker.orientation.w = marker_quaternion.getW();
     }
   }
 
