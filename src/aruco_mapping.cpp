@@ -49,7 +49,7 @@ ArucoMapping::ArucoMapping(ros::NodeHandle &nh) :
   first_marker_detected_(false),          // First marker not detected by defualt
   lowest_marker_id_(-1),                  // Lowest marker ID
   marker_counter_(0),                     // Reset marker counter
-  closest_camera_index_(0),               // Reset closest camera index
+  closest_camera_id_(-1),               // Reset closest camera id (camera_{marker's id})
   gui_(true),
   debug_image_(true),
   debug_image_topic_("debug_image"),
@@ -395,26 +395,27 @@ ArucoMapping::processImage(cv::Mat input_image,cv::Mat output_image)
       std::stringstream camera_tf_id_old;
       std::stringstream marker_tf_id_old;
 
-      camera_tf_id << "camera_" << index;
+      camera_tf_id << "camera_" << markers_[index].marker_id;
 
       // Flag to keep info if any_known marker_visible in actual image
       bool any_known_marker_visible = false;
 
       // Array ID of markers, which position of new marker is calculated
-      int last_marker_id;
+      int last_marker_index;
 
       // Testing, if is possible calculate position of a new marker to old known marker
       for(int k = 0; k < index; k++)
       {
-        if((markers_[k].visible == true) && (any_known_marker_visible == false))
+        auto minfo = &markers_[k];
+        if((minfo->visible == true) && (any_known_marker_visible == false))
         {
-          if(markers_[k].previous_marker_id != -1)
+          if(minfo->previous_marker_id != -1)
           {
             any_known_marker_visible = true;
-            camera_tf_id_old << "camera_" << k;
-            marker_tf_id_old << "marker_" << k;
-            markers_[index].previous_marker_id = k;
-            last_marker_id = k;
+            camera_tf_id_old << "camera_" << minfo->marker_id;
+            marker_tf_id_old << "marker_" << minfo->marker_id;
+            markers_[index].previous_marker_id = minfo->marker_id;
+            last_marker_index = k;
            }
          }
        }
@@ -426,7 +427,7 @@ ArucoMapping::processImage(cv::Mat input_image,cv::Mat output_image)
        for(char k = 0; k < 10; k++)
        {
          // TF from old marker and its camera
-         broadcaster_.sendTransform(tf::StampedTransform(markers_[last_marker_id].current_camera_tf,ros::Time::now(),
+         broadcaster_.sendTransform(tf::StampedTransform(markers_[last_marker_index].current_camera_tf,ros::Time::now(),
                                                          marker_tf_id_old.str(),camera_tf_id_old.str()));
 
          // TF from old camera to new camera
@@ -441,7 +442,7 @@ ArucoMapping::processImage(cv::Mat input_image,cv::Mat output_image)
                                     ros::Duration(WAIT_FOR_TRANSFORM_INTERVAL));
         try
         {
-          broadcaster_.sendTransform(tf::StampedTransform(markers_[last_marker_id].current_camera_tf,ros::Time::now(),
+          broadcaster_.sendTransform(tf::StampedTransform(markers_[last_marker_index].current_camera_tf,ros::Time::now(),
                                                           marker_tf_id_old.str(),camera_tf_id_old.str()));
 
           broadcaster_.sendTransform(tf::StampedTransform(markers_[index].current_camera_tf,ros::Time::now(),
@@ -516,7 +517,7 @@ ArucoMapping::processImage(cv::Mat input_image,cv::Mat output_image)
         publishTfs(false);
 
       std::stringstream marker_tf_name;
-      marker_tf_name << "marker_" << index;
+      marker_tf_name << "marker_" << markers_[index].marker_id;
 
       listener_->waitForTransform("base_marker",marker_tf_name.str(),ros::Time(0),
                                   ros::Duration(WAIT_FOR_TRANSFORM_INTERVAL));
@@ -556,18 +557,18 @@ ArucoMapping::processImage(cv::Mat input_image,cv::Mat output_image)
     for(int k = 0; k < num_of_markers_; k++)
     {
       double a,b,c,size;
-
+      auto minfo = &markers_[k];
       // If marker is visible, distance is calculated
-      if(markers_[k].visible==true)
+      if(minfo->visible==true)
       {
-        a = markers_[k].current_camera_pose.position.x;
-        b = markers_[k].current_camera_pose.position.y;
-        c = markers_[k].current_camera_pose.position.z;
+        a = minfo->current_camera_pose.position.x;
+        b = minfo->current_camera_pose.position.y;
+        c = minfo->current_camera_pose.position.z;
         size = std::sqrt((a * a) + (b * b) + (c * c));
         if(size < minimal_distance)
         {
           minimal_distance = size;
-          closest_camera_index_ = k;
+          closest_camera_id_ = minfo->marker_id;
         }
 
         any_markers_visible = true;
@@ -588,7 +589,7 @@ ArucoMapping::processImage(cv::Mat input_image,cv::Mat output_image)
   if((first_marker_detected_ == true) && (any_markers_visible == true))
   {
     std::stringstream closest_camera_tf_name;
-    closest_camera_tf_name << "camera_" << closest_camera_index_;
+    closest_camera_tf_name << "camera_" << closest_camera_id_;
 
     listener_->waitForTransform("base_marker",closest_camera_tf_name.str(),ros::Time(0),
                                 ros::Duration(WAIT_FOR_TRANSFORM_INTERVAL));
@@ -667,32 +668,33 @@ ArucoMapping::publishTfs(bool base_marker_option)
 {
   for(int i = 0; i < marker_counter_; i++)
   {
+    auto minfo = &markers_[i];
     // Actual Marker
     std::stringstream marker_tf_id;
-    marker_tf_id << "marker_" << i;
+    marker_tf_id << "marker_" << minfo->marker_id;
     // Older marker - or base_marker
     std::stringstream marker_tf_id_old;
     if(i == 0)
       marker_tf_id_old << "base_marker";
     else
-      marker_tf_id_old << "marker_" << markers_[i].previous_marker_id;
-    broadcaster_.sendTransform(tf::StampedTransform(markers_[i].tf_to_previous,ros::Time::now(),marker_tf_id_old.str(),marker_tf_id.str()));
+      marker_tf_id_old << "marker_" << minfo->previous_marker_id;
+    broadcaster_.sendTransform(tf::StampedTransform(minfo->tf_to_previous,ros::Time::now(),marker_tf_id_old.str(),marker_tf_id.str()));
 
     // Position of camera to its marker
     std::stringstream camera_tf_id;
-    camera_tf_id << "camera_" << i;
-    broadcaster_.sendTransform(tf::StampedTransform(markers_[i].current_camera_tf,ros::Time::now(),marker_tf_id.str(),camera_tf_id.str()));
+    camera_tf_id << "camera_" << minfo->marker_id;
+    broadcaster_.sendTransform(tf::StampedTransform(minfo->current_camera_tf,ros::Time::now(),marker_tf_id.str(),camera_tf_id.str()));
 
     if(base_marker_option == true)
     {
       // Global position of marker TF
       std::stringstream marker_globe;
-      marker_globe << "marker_globe_" << i;
-      broadcaster_.sendTransform(tf::StampedTransform(markers_[i].tf_to_base_marker,ros::Time::now(),"base_marker",marker_globe.str()));
+      marker_globe << "marker_globe_" << minfo->marker_id;
+      broadcaster_.sendTransform(tf::StampedTransform(minfo->tf_to_base_marker,ros::Time::now(),"base_marker",marker_globe.str()));
     }
 
     // Cubes for RVIZ - markers
-    publishMarker(markers_[i].geometry_msg_to_previous,markers_[i].marker_id,i);
+    publishMarker(minfo->geometry_msg_to_previous,minfo->marker_id,i);
   }
 
   // Global Position of object

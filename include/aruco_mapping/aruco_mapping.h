@@ -151,7 +151,7 @@ private:
 
   int marker_counter_;
   int marker_counter_previous_;
-  int closest_camera_index_;
+  int closest_camera_id_;
   int lowest_marker_id_;
   bool first_marker_detected_;
   
