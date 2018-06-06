@@ -253,17 +253,17 @@ ArucoMapping::processImage(cv::Mat input_image,cv::Mat output_image)
 
     ROS_DEBUG_STREAM("The lowest Id marker " << lowest_marker_id_ );
 
-    // Identify lowest marker ID with world's origin
+    // Identify lowest marker ID with base_marker's origin
     markers_[0].marker_id = lowest_marker_id_;
 
-    markers_[0].geometry_msg_to_world.position.x = 0;
-    markers_[0].geometry_msg_to_world.position.y = 0;
-    markers_[0].geometry_msg_to_world.position.z = 0;
+    markers_[0].geometry_msg_to_base_marker.position.x = 0;
+    markers_[0].geometry_msg_to_base_marker.position.y = 0;
+    markers_[0].geometry_msg_to_base_marker.position.z = 0;
 
-    markers_[0].geometry_msg_to_world.orientation.x = 0;
-    markers_[0].geometry_msg_to_world.orientation.y = 0;
-    markers_[0].geometry_msg_to_world.orientation.z = 0;
-    markers_[0].geometry_msg_to_world.orientation.w = 1;
+    markers_[0].geometry_msg_to_base_marker.orientation.x = 0;
+    markers_[0].geometry_msg_to_base_marker.orientation.y = 0;
+    markers_[0].geometry_msg_to_base_marker.orientation.z = 0;
+    markers_[0].geometry_msg_to_base_marker.orientation.w = 1;
 
     // Relative position and Global position
     markers_[0].geometry_msg_to_previous.position.x = 0;
@@ -291,7 +291,7 @@ ArucoMapping::processImage(cv::Mat input_image,cv::Mat output_image)
     markers_[0].tf_to_previous.setRotation(rotation);
 
     // Relative position of first marker equals Global position
-    markers_[0].tf_to_world=markers_[0].tf_to_previous;
+    markers_[0].tf_to_base_marker=markers_[0].tf_to_previous;
 
     // Increase count
     marker_counter_++;
@@ -518,12 +518,12 @@ ArucoMapping::processImage(cv::Mat input_image,cv::Mat output_image)
       std::stringstream marker_tf_name;
       marker_tf_name << "marker_" << index;
 
-      listener_->waitForTransform("world",marker_tf_name.str(),ros::Time(0),
+      listener_->waitForTransform("base_marker",marker_tf_name.str(),ros::Time(0),
                                   ros::Duration(WAIT_FOR_TRANSFORM_INTERVAL));
       try
       {
-        listener_->lookupTransform("world",marker_tf_name.str(),ros::Time(0),
-                                   markers_[index].tf_to_world);
+        listener_->lookupTransform("base_marker",marker_tf_name.str(),ros::Time(0),
+                                   markers_[index].tf_to_base_marker);
       }
       catch(tf::TransformException &e)
       {
@@ -531,16 +531,16 @@ ArucoMapping::processImage(cv::Mat input_image,cv::Mat output_image)
       }
 
       // Saving TF to Pose
-      const tf::Vector3 marker_origin = markers_[index].tf_to_world.getOrigin();
-      markers_[index].geometry_msg_to_world.position.x = marker_origin.getX();
-      markers_[index].geometry_msg_to_world.position.y = marker_origin.getY();
-      markers_[index].geometry_msg_to_world.position.z = marker_origin.getZ();
+      const tf::Vector3 marker_origin = markers_[index].tf_to_base_marker.getOrigin();
+      markers_[index].geometry_msg_to_base_marker.position.x = marker_origin.getX();
+      markers_[index].geometry_msg_to_base_marker.position.y = marker_origin.getY();
+      markers_[index].geometry_msg_to_base_marker.position.z = marker_origin.getZ();
 
-      tf::Quaternion marker_quaternion=markers_[index].tf_to_world.getRotation();
-      markers_[index].geometry_msg_to_world.orientation.x = marker_quaternion.getX();
-      markers_[index].geometry_msg_to_world.orientation.y = marker_quaternion.getY();
-      markers_[index].geometry_msg_to_world.orientation.z = marker_quaternion.getZ();
-      markers_[index].geometry_msg_to_world.orientation.w = marker_quaternion.getW();
+      tf::Quaternion marker_quaternion=markers_[index].tf_to_base_marker.getRotation();
+      markers_[index].geometry_msg_to_base_marker.orientation.x = marker_quaternion.getX();
+      markers_[index].geometry_msg_to_base_marker.orientation.y = marker_quaternion.getY();
+      markers_[index].geometry_msg_to_base_marker.orientation.z = marker_quaternion.getZ();
+      markers_[index].geometry_msg_to_base_marker.orientation.w = marker_quaternion.getW();
     }
   }
 
@@ -590,12 +590,12 @@ ArucoMapping::processImage(cv::Mat input_image,cv::Mat output_image)
     std::stringstream closest_camera_tf_name;
     closest_camera_tf_name << "camera_" << closest_camera_index_;
 
-    listener_->waitForTransform("world",closest_camera_tf_name.str(),ros::Time(0),
+    listener_->waitForTransform("base_marker",closest_camera_tf_name.str(),ros::Time(0),
                                 ros::Duration(WAIT_FOR_TRANSFORM_INTERVAL));
     try
     {
-      listener_->lookupTransform("world",closest_camera_tf_name.str(),ros::Time(0),
-                                 world_position_transform_);
+      listener_->lookupTransform("base_marker",closest_camera_tf_name.str(),ros::Time(0),
+                                 base_marker_position_transform_);
     }
     catch(tf::TransformException &ex)
     {
@@ -603,16 +603,16 @@ ArucoMapping::processImage(cv::Mat input_image,cv::Mat output_image)
     }
 
     // Saving TF to Pose
-    const tf::Vector3 marker_origin = world_position_transform_.getOrigin();
-    world_position_geometry_msg_.position.x = marker_origin.getX();
-    world_position_geometry_msg_.position.y = marker_origin.getY();
-    world_position_geometry_msg_.position.z = marker_origin.getZ();
+    const tf::Vector3 marker_origin = base_marker_position_transform_.getOrigin();
+    base_marker_position_geometry_msg_.position.x = marker_origin.getX();
+    base_marker_position_geometry_msg_.position.y = marker_origin.getY();
+    base_marker_position_geometry_msg_.position.z = marker_origin.getZ();
 
-    tf::Quaternion marker_quaternion = world_position_transform_.getRotation();
-    world_position_geometry_msg_.orientation.x = marker_quaternion.getX();
-    world_position_geometry_msg_.orientation.y = marker_quaternion.getY();
-    world_position_geometry_msg_.orientation.z = marker_quaternion.getZ();
-    world_position_geometry_msg_.orientation.w = marker_quaternion.getW();
+    tf::Quaternion marker_quaternion = base_marker_position_transform_.getRotation();
+    base_marker_position_geometry_msg_.orientation.x = marker_quaternion.getX();
+    base_marker_position_geometry_msg_.orientation.y = marker_quaternion.getY();
+    base_marker_position_geometry_msg_.orientation.z = marker_quaternion.getZ();
+    base_marker_position_geometry_msg_.orientation.w = marker_quaternion.getW();
   }
 
   //------------------------------------------------------
@@ -629,10 +629,10 @@ ArucoMapping::processImage(cv::Mat input_image,cv::Mat output_image)
   if((any_markers_visible == true))
   {
     marker_msg.header.stamp = ros::Time::now();
-    marker_msg.header.frame_id = "world";
+    marker_msg.header.frame_id = "base_marker";
     marker_msg.marker_visibile = true;
     marker_msg.num_of_visible_markers = num_of_visible_markers;
-    marker_msg.global_camera_pose = world_position_geometry_msg_;
+    marker_msg.global_camera_pose = base_marker_position_geometry_msg_;
     marker_msg.marker_ids.clear();
     marker_msg.global_marker_poses.clear();
     for(size_t j = 0; j < marker_counter_; j++)
@@ -640,14 +640,14 @@ ArucoMapping::processImage(cv::Mat input_image,cv::Mat output_image)
       if(markers_[j].visible == true)
       {
         marker_msg.marker_ids.push_back(markers_[j].marker_id);
-        marker_msg.global_marker_poses.push_back(markers_[j].geometry_msg_to_world);       
+        marker_msg.global_marker_poses.push_back(markers_[j].geometry_msg_to_base_marker);
       }
     }
   }
   else
   {
     marker_msg.header.stamp = ros::Time::now();
-    marker_msg.header.frame_id = "world";
+    marker_msg.header.frame_id = "base_marker";
     marker_msg.num_of_visible_markers = num_of_visible_markers;
     marker_msg.marker_visibile = false;
     marker_msg.marker_ids.clear();
@@ -663,17 +663,17 @@ ArucoMapping::processImage(cv::Mat input_image,cv::Mat output_image)
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
 void
-ArucoMapping::publishTfs(bool world_option)
+ArucoMapping::publishTfs(bool base_marker_option)
 {
   for(int i = 0; i < marker_counter_; i++)
   {
     // Actual Marker
     std::stringstream marker_tf_id;
     marker_tf_id << "marker_" << i;
-    // Older marker - or World
+    // Older marker - or base_marker
     std::stringstream marker_tf_id_old;
     if(i == 0)
-      marker_tf_id_old << "world";
+      marker_tf_id_old << "base_marker";
     else
       marker_tf_id_old << "marker_" << markers_[i].previous_marker_id;
     broadcaster_.sendTransform(tf::StampedTransform(markers_[i].tf_to_previous,ros::Time::now(),marker_tf_id_old.str(),marker_tf_id.str()));
@@ -683,12 +683,12 @@ ArucoMapping::publishTfs(bool world_option)
     camera_tf_id << "camera_" << i;
     broadcaster_.sendTransform(tf::StampedTransform(markers_[i].current_camera_tf,ros::Time::now(),marker_tf_id.str(),camera_tf_id.str()));
 
-    if(world_option == true)
+    if(base_marker_option == true)
     {
       // Global position of marker TF
       std::stringstream marker_globe;
       marker_globe << "marker_globe_" << i;
-      broadcaster_.sendTransform(tf::StampedTransform(markers_[i].tf_to_world,ros::Time::now(),"world",marker_globe.str()));
+      broadcaster_.sendTransform(tf::StampedTransform(markers_[i].tf_to_base_marker,ros::Time::now(),"base_marker",marker_globe.str()));
     }
 
     // Cubes for RVIZ - markers
@@ -696,8 +696,8 @@ ArucoMapping::publishTfs(bool world_option)
   }
 
   // Global Position of object
-  if(world_option == true)
-    broadcaster_.sendTransform(tf::StampedTransform(world_position_transform_,ros::Time::now(),"world","camera_position"));
+  if(base_marker_option == true)
+    broadcaster_.sendTransform(tf::StampedTransform(base_marker_position_transform_,ros::Time::now(),"base_marker","camera_position"));
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -708,7 +708,7 @@ ArucoMapping::publishMarker(geometry_msgs::Pose marker_pose, int marker_id, int 
   visualization_msgs::Marker vis_marker;
 
   if(index == 0)
-    vis_marker.header.frame_id = "world";
+    vis_marker.header.frame_id = "base_marker";
   else
   {
     std::stringstream marker_tf_id_old;

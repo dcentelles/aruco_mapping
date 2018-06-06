@@ -75,9 +75,9 @@ public:
     int marker_id;                                  // Marker ID
     int previous_marker_id;                         // Used for chaining markers
     geometry_msgs::Pose geometry_msg_to_previous;   // Position with respect to previous marker
-    geometry_msgs::Pose geometry_msg_to_world;      // Position with respect to world's origin
+    geometry_msgs::Pose geometry_msg_to_base_marker;      // Position with respect to base_marker's origin
     tf::StampedTransform tf_to_previous;            // TF with respect to previous marker
-    tf::StampedTransform tf_to_world;               // TF with respect to world's origin
+    tf::StampedTransform tf_to_base_marker;               // TF with respect to base_marker's origin
     geometry_msgs::Pose current_camera_pose;        // Position of camera with respect to the marker
     tf::Transform current_camera_tf;                // TF of camera with respect to the marker
   };
@@ -98,7 +98,7 @@ private:
   bool parseCalibrationFile(std::string filename);
 
   /** \brief Function to publish all known TFs*/
-  void publishTfs(bool world_option);
+  void publishTfs(bool base_marker_option);
 
   /** \brief Function to publish all known markers for visualization purposes*/
   void publishMarker(geometry_msgs::Pose markerPose, int MarkerID, int rank);
@@ -138,11 +138,11 @@ private:
   /** \brief Container holding MarkerInfo data about all detected markers */
   std::vector<MarkerInfo> markers_;
    
-  /** \brief Actual TF of camera with respect to world's origin */
-  tf::StampedTransform world_position_transform_;
+  /** \brief Actual TF of camera with respect to base_marker's origin */
+  tf::StampedTransform base_marker_position_transform_;
   
-  /** \brief Actual Pose of camera with respect to world's origin */
-  geometry_msgs::Pose world_position_geometry_msg_;
+  /** \brief Actual Pose of camera with respect to base_marker's origin */
+  geometry_msgs::Pose base_marker_position_geometry_msg_;
 
   aruco::CameraParameters aruco_calib_params_;
 
