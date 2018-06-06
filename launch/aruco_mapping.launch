@@ -1,33 +1,34 @@
 <?xml version="1.0"?>
 <launch> 
+  <arg name="rviz" default="false"/>
+  <arg name="gui" default="false" />
+  <arg name="debug_image" default="true" />
+  <arg name="debug_image_topic" default="debug_image" />
+  <arg name="image_topic" default="/camera/image" />
+  <arg name="image_transport" default="compressed" />
+  <arg name="num_of_markers" default="200" />
+  <arg name="marker_size" default="0.11" />
+  <arg name="calibration_file" default="$(find aruco_mapping)/data/raspicam_v1_underwater.ini" />
 
   <!-- RVIZ -->
-  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find aruco_mapping)/launch/aruco_config.rviz" />
+  <node if="$(arg rviz)" name="rviz" pkg="rviz" type="rviz" args="-d $(find aruco_mapping)/launch/aruco_config.rviz" />
 
-   <!--   usb_cam node -->
-  <node name="usb_cam" pkg="usb_cam" type="usb_cam_node" output="screen">
-    <param name="video_device" value="/dev/video0" />
-    <param name="image_width" value="640" />
-    <param name="image_height" value="480" />
-    <param name="pixel_format" value="yuyv" />
-    <param name="camera_name" value="webcam" />
-    <param name="camera_frame_id" value="webcam" />
-    <param name="io_method" value="mmap"/>
-  </node>
-    
   <!-- ArUco mapping -->
   <node pkg="aruco_mapping" type="aruco_mapping" name="aruco_mapping" output="screen">
-    <remap from="/image_raw" to="/usb_cam/image_raw"/>
-
-    <param name="calibration_file" type="string" value="$(find aruco_mapping)/data/webcam.ini" />
-    <param name="num_of_markers" type="int" value="200" />
-    <param name="marker_size" type="double" value="0.11"/>
+    <param name="image_topic" type="string" value="$(arg image_topic)"/>
+    <param name="image_transport" type="string" value="$(arg image_transport)" />
+    <param name="calibration_file" type="string" value="$(arg calibration_file)"/>
+    <param name="num_of_markers" type="int" value="$(arg num_of_markers)" />
+    <param name="marker_size" type="double" value="$(arg marker_size)"/>
     <param name="space_type" type="string" value="plane" />
-    <param name="roi_allowed" type="bool" value="false" /> -->
-    <param name="roi_x" type="int" value="0" /> -->
-    <param name="roi_y" type="int" value="0" /> -->
-    <param name="roi_width" type="int" value="640" /> -->
-    <param name="roi_height" type="int" value="480" /> --> 
+    <param name="roi_allowed" type="bool" value="false" />
+    <param name="roi_x" type="int" value="0" /> 
+    <param name="roi_y" type="int" value="0" /> 
+    <param name="roi_width" type="int" value="640" /> 
+    <param name="roi_height" type="int" value="480" />  
+    <param name="gui" type="bool" value="$(arg gui)" />
+    <param name="debug_image" type="bool" value="$(arg debug_image)" />
+    <param name="debug_image_topic" type="string" value="$(arg debug_image_topic)" />
 
   </node>  
 </launch>

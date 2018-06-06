@@ -85,7 +85,7 @@ public:
 public:
   
   /** \brief Construct a client for EZN64 USB control*/  
-  ArucoMapping(ros::NodeHandle *nh);
+  ArucoMapping(ros::NodeHandle &nh);
     
   ~ArucoMapping();
 
@@ -124,7 +124,16 @@ private:
   int  roi_x_;                                      
   int  roi_y_;                                      
   int  roi_w_;                                     
-  int  roi_h_;     
+  int  roi_h_;
+  bool gui_, debug_image_;
+  std::string debug_image_topic_, image_topic_;
+  sensor_msgs::ImagePtr debug_image_msg_;
+  ros::NodeHandle nh_;
+
+  image_transport::Subscriber img_sub_;
+
+  /** \brief Publisher of debug image (with marker frames)*/
+  image_transport::Publisher  marker_debug_image_pub_;
   
   /** \brief Container holding MarkerInfo data about all detected markers */
   std::vector<MarkerInfo> markers_;

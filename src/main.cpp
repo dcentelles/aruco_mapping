@@ -42,14 +42,7 @@ main(int argc, char **argv)
   ros::NodeHandle nh;
       
   // Aruco mapping object
-  aruco_mapping::ArucoMapping obj(&nh);
-  std::string imageTopic;
-  bool found = nh.getParam("/aruco_mapping/image", imageTopic);
-  if(!found) imageTopic = "/image_raw";
-
-  // Image node and subscriber
-  image_transport::ImageTransport it(nh);
-  image_transport::Subscriber img_sub = it.subscribe(imageTopic, 1, &aruco_mapping::ArucoMapping::imageCallback, &obj);
+  aruco_mapping::ArucoMapping obj(nh);
 
   ros::spin();
 

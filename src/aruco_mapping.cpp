@@ -39,7 +39,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace aruco_mapping
 {
 
-ArucoMapping::ArucoMapping(ros::NodeHandle *nh) :
+ArucoMapping::ArucoMapping(ros::NodeHandle &nh) :
   listener_ (new tf::TransformListener),  // Initialize TF Listener  
   num_of_markers_ (10),                   // Number of used markers
   marker_size_(0.1),                      // Marker size in m
@@ -49,22 +49,30 @@ ArucoMapping::ArucoMapping(ros::NodeHandle *nh) :
   first_marker_detected_(false),          // First marker not detected by defualt
   lowest_marker_id_(-1),                  // Lowest marker ID
   marker_counter_(0),                     // Reset marker counter
-  closest_camera_index_(0)                // Reset closest camera index 
+  closest_camera_index_(0),               // Reset closest camera index
+  gui_(true),
+  debug_image_(true),
+  debug_image_topic_("debug_image"),
+  image_topic_("/image_raw"),
+  nh_("~")
   
 {
   double temp_marker_size;  
   
   //Parse params from launch file 
-  nh->getParam("/aruco_mapping/calibration_file", calib_filename_);
-  nh->getParam("/aruco_mapping/marker_size", temp_marker_size); 
-  nh->getParam("/aruco_mapping/num_of_markers", num_of_markers_);
-  nh->getParam("/aruco_maping/space_type",space_type_);
-  nh->getParam("/aruco_mapping/roi_allowed",roi_allowed_);
-  nh->getParam("/aruco_mapping/roi_x",roi_x_);
-  nh->getParam("/aruco_mapping/roi_y",roi_y_);
-  nh->getParam("/aruco_mapping/roi_w",roi_w_);
-  nh->getParam("/aruco_mapping/roi_h",roi_h_);
-     
+  nh_.getParam("calibration_file", calib_filename_);
+  nh_.getParam("marker_size", temp_marker_size);
+  nh_.getParam("num_of_markers", num_of_markers_);
+  nh_.getParam("pace_type",space_type_);
+  nh_.getParam("roi_allowed",roi_allowed_);
+  nh_.getParam("roi_x",roi_x_);
+  nh_.getParam("roi_y",roi_y_);
+  nh_.getParam("roi_w",roi_w_);
+  nh_.getParam("roi_h",roi_h_);
+  nh_.getParam("gui",gui_);
+  nh_.getParam("debug_image", debug_image_);
+  nh_.getParam("debug_image_topic", debug_image_topic_);
+  nh_.getParam("image_topic", image_topic_);
   // Double to float conversion
   marker_size_ = float(temp_marker_size);
   
@@ -80,18 +88,22 @@ ArucoMapping::ArucoMapping(ros::NodeHandle *nh) :
     ROS_INFO_STREAM("ROI x-coor: " << roi_x_);
     ROS_INFO_STREAM("ROI y-coor: " << roi_x_);
     ROS_INFO_STREAM("ROI width: "  << roi_w_);
-    ROS_INFO_STREAM("ROI height: " << roi_h_);      
+    ROS_INFO_STREAM("ROI height: " << roi_h_);
+    ROS_INFO_STREAM("debug_image: "  << debug_image_);
+    ROS_INFO_STREAM("debug_image_topic: " << debug_image_topic_);
+    ROS_INFO_STREAM("image_topic: " << image_topic_);
   }
     
   //ROS publishers
-  marker_msg_pub_           = nh->advertise<aruco_mapping::ArucoMarker>("aruco_poses",1);
-  marker_visualization_pub_ = nh->advertise<visualization_msgs::Marker>("aruco_markers",1);
+  marker_msg_pub_           = nh.advertise<aruco_mapping::ArucoMarker>("aruco_poses",1);
+  marker_visualization_pub_ = nh.advertise<visualization_msgs::Marker>("aruco_markers",1);
           
   //Parse data from calibration file
   parseCalibrationFile(calib_filename_);
 
   //Initialize OpenCV window
-  cv::namedWindow("Mono8", CV_WINDOW_AUTOSIZE);       
+  if(gui_)
+    cv::namedWindow("Mono8", CV_WINDOW_AUTOSIZE);       
       
   //Resize marker container
   markers_.resize(num_of_markers_);
@@ -103,6 +115,14 @@ ArucoMapping::ArucoMapping(ros::NodeHandle *nh) :
     markers_[i].visible = false;
     markers_[i].marker_id = -1;
   }
+
+  if(debug_image_)
+  {
+      image_transport::ImageTransport it(nh_);
+      marker_debug_image_pub_ = it.advertise(debug_image_topic_,1);
+  }
+  image_transport::ImageTransport it(nh);
+  img_sub_ = it.subscribe(image_topic_, 1, &aruco_mapping::ArucoMapping::imageCallback, this);
   detector_.setDetectionMode (aruco::DetectionMode::DM_FAST);
 }
 
@@ -182,8 +202,16 @@ ArucoMapping::imageCallback(const sensor_msgs::ImageConstPtr &original_image)
   processImage(last_image_,last_image_);
   
   // Show image
-  cv::imshow("Mono8", last_image_);
-  cv::waitKey(10);  
+  if(gui_)
+  {
+    cv::imshow("Mono8", last_image_);
+    cv::waitKey(10);
+  } 
+  if(debug_image_)
+    {
+      debug_image_msg_ = cv_bridge::CvImage(std_msgs::Header(), "mono8", last_image_).toImageMsg();
+      marker_debug_image_pub_.publish (debug_image_msg_);
+    }
 }
 
 
