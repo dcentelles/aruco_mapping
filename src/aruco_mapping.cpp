@@ -103,6 +103,7 @@ ArucoMapping::ArucoMapping(ros::NodeHandle *nh) :
     markers_[i].visible = false;
     markers_[i].marker_id = -1;
   }
+  detector_.setDetectionMode (aruco::DetectionMode::DM_FAST);
 }
 
 ArucoMapping::~ArucoMapping()
@@ -189,7 +190,6 @@ ArucoMapping::imageCallback(const sensor_msgs::ImageConstPtr &original_image)
 bool
 ArucoMapping::processImage(cv::Mat input_image,cv::Mat output_image)
 {
-  detector_.setDetectionMode (aruco::DetectionMode::DM_FAST);
   std::vector<aruco::Marker> temp_markers;
 
   //Set visibility flag to false for all markers
@@ -714,33 +714,21 @@ ArucoMapping::publishMarker(geometry_msgs::Pose marker_pose, int marker_id, int 
 tf::Transform
 ArucoMapping::arucoMarker2Tf(const aruco::Marker &marker)
 {
-  cv::Mat marker_rotation(3,3, CV_32FC1);
-  cv::Rodrigues(marker.Rvec, marker_rotation);
-  cv::Mat marker_translation = marker.Tvec;
+  cv::Mat rot(3, 3, CV_64FC1);
+  cv::Mat Rvec64;
+  marker.Rvec.convertTo(Rvec64, CV_64FC1);
+  cv::Rodrigues(Rvec64, rot);
+  cv::Mat tran64;
+  marker.Tvec.convertTo(tran64, CV_64FC1);
 
-  cv::Mat rotate_to_ros(3,3,CV_32FC1);
-  rotate_to_ros.at<float>(0,0) = -1.0;
-  rotate_to_ros.at<float>(0,1) = 0;
-  rotate_to_ros.at<float>(0,2) = 0;
-  rotate_to_ros.at<float>(1,0) = 0;
-  rotate_to_ros.at<float>(1,1) = 0;
-  rotate_to_ros.at<float>(1,2) = 1.0;
-  rotate_to_ros.at<float>(2,0) = 0.0;
-  rotate_to_ros.at<float>(2,1) = 1.0;
-  rotate_to_ros.at<float>(2,2) = 0.0;
+  tf::Matrix3x3 tf_rot(rot.at<double>(0,0), rot.at<double>(0,1), rot.at<double>(0,2),
+                       rot.at<double>(1,0), rot.at<double>(1,1), rot.at<double>(1,2),
+                       rot.at<double>(2,0), rot.at<double>(2,1), rot.at<double>(2,2));
 
-  marker_rotation = marker_rotation * rotate_to_ros.t();
+  tf::Vector3 tf_orig(tran64.at<double>(0,0), tran64.at<double>(1,0), tran64.at<double>(2,0));
 
-  // Origin solution
-  tf::Matrix3x3 marker_tf_rot(marker_rotation.at<float>(0,0),marker_rotation.at<float>(0,1),marker_rotation.at<float>(0,2),
-                              marker_rotation.at<float>(1,0),marker_rotation.at<float>(1,1),marker_rotation.at<float>(1,2),
-                              marker_rotation.at<float>(2,0),marker_rotation.at<float>(2,1),marker_rotation.at<float>(2,2));
 
-  tf::Vector3 marker_tf_tran(marker_translation.at<float>(0,0),
-                             marker_translation.at<float>(1,0),
-                             marker_translation.at<float>(2,0));
-
-  return tf::Transform(marker_tf_rot, marker_tf_tran);
+  return tf::Transform(tf_rot, tf_orig);
 }
 
 
