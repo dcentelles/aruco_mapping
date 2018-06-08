@@ -380,9 +380,6 @@ ArucoMapping::processImage(cv::Mat input_image,cv::Mat output_image)
     marker_info->current_camera_pose.orientation.w = marker_quaternion.getW();
 
 
-    // TF from marker to its camera
-    broadcaster_.sendTransform(tf::StampedTransform(marker_info->current_camera_tf.inverse(),ros::Time::now(),
-                                                    marker_tf_id.str(), camera_tf_id.str()));
     // Flag to keep info if any_known marker_visible in actual image
     bool any_known_marker_visible = false;
 
@@ -390,6 +387,11 @@ ArucoMapping::processImage(cv::Mat input_image,cv::Mat output_image)
     int last_marker_index;
     std::stringstream camera_tf_id_old;
     std::stringstream marker_tf_id_old;
+
+
+    // TF from marker to its camera
+    broadcaster_.sendTransform(tf::StampedTransform(marker_info->current_camera_tf.inverse(),ros::Time::now(),
+                                                    marker_tf_id.str(), camera_tf_id.str()));
 
 
     // Testing, if is possible calculate position of a new marker to old known marker
@@ -406,9 +408,16 @@ ArucoMapping::processImage(cv::Mat input_image,cv::Mat output_image)
           marker_info->previous_marker_id = minfo->marker_id;
           last_marker_index = k;
 
+          // TF from marker to its camera
+          broadcaster_.sendTransform(tf::StampedTransform(marker_info->current_camera_tf.inverse(),ros::Time::now(),
+                                                          marker_tf_id.str(), camera_tf_id.str()));
           // TF from old camera (should be new camera) to marker
           broadcaster_.sendTransform(tf::StampedTransform(marker_info->current_camera_tf,ros::Time::now(),
                                                           camera_tf_id_old.str(),marker_tf_id.str()));
+          // TF from old marker to old camera
+          broadcaster_.sendTransform(tf::StampedTransform(minfo->current_camera_tf.inverse(),ros::Time::now(),
+                                                          marker_tf_id_old.str(),camera_tf_id_old.str()));
+          ros::Duration(BROADCAST_WAIT_INTERVAL).sleep();
 
           try
           {
