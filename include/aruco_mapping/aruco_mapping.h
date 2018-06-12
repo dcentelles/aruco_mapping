@@ -98,7 +98,7 @@ private:
   bool parseCalibrationFile(std::string filename);
 
   /** \brief Function to publish all known TFs*/
-  void publishTfs(bool base_marker_option);
+  void publishTfs();
 
   /** \brief Function to publish all known markers for visualization purposes*/
   void publishMarker(geometry_msgs::Pose markerPose, int MarkerID, int rank);
