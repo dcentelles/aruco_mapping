@@ -80,6 +80,7 @@ public:
     tf::StampedTransform tf_to_base_marker;               // TF with respect to base_marker's origin
     geometry_msgs::Pose current_camera_pose;        // Position of camera with respect to the marker
     tf::Transform current_camera_tf;                // TF of camera with respect to the marker
+    tf::Transform current_camera_tf_inverse;
   };
 
 public:
