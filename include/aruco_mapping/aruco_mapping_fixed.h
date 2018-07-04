@@ -63,7 +63,7 @@ namespace aruco_mapping
 {
 
 /** \brief Client class for Aruco mapping */  
-class ArucoMapping
+class ArucoMappingFixed
 {
 public:
   
@@ -86,9 +86,9 @@ public:
 public:
   
   /** \brief Construct a client for EZN64 USB control*/  
-  ArucoMapping(ros::NodeHandle &nh);
+  ArucoMappingFixed(ros::NodeHandle &nh);
     
-  ~ArucoMapping();
+  ~ArucoMappingFixed();
 
   /** \brief Callback function to handle image processing*/
   void imageCallback(const sensor_msgs::ImageConstPtr &original_image);

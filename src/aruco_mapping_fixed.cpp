@@ -34,12 +34,12 @@
 #ifndef ARUCO_MAPPING_CPP
 #define ARUCO_MAPPING_CPP
 
-#include <aruco_mapping/aruco_mapping.h>
+#include <aruco_mapping/aruco_mapping_fixed.h>
 #include <sensor_msgs/CameraInfo.h>
 
 namespace aruco_mapping {
 
-ArucoMapping::ArucoMapping(ros::NodeHandle &nh)
+ArucoMappingFixed::ArucoMappingFixed(ros::NodeHandle &nh)
     : listener_(new tf::TransformListener), // Initialize TF Listener
       num_of_markers_(10),                  // Number of used markers
       marker_size_(0.1),                    // Marker size in m
@@ -128,15 +128,15 @@ ArucoMapping::ArucoMapping(ros::NodeHandle &nh)
     marker_debug_image_pub_ = it.advertise(debug_image_topic_, 1);
   }
   image_transport::ImageTransport it(nh);
-  img_sub_ = it.subscribe(image_topic_, 1,
-                          &aruco_mapping::ArucoMapping::imageCallback, this);
+  img_sub_ = it.subscribe(
+      image_topic_, 1, &aruco_mapping::ArucoMappingFixed::imageCallback, this);
   detector_.setDetectionMode(aruco::DetectionMode::DM_NORMAL);
   detector_.setDictionary("ARUCO_MIP_36h12");
 }
 
-ArucoMapping::~ArucoMapping() { delete listener_; }
+ArucoMappingFixed::~ArucoMappingFixed() { delete listener_; }
 
-bool ArucoMapping::rosCameraInfo2ArucoCamParams(
+bool ArucoMappingFixed::rosCameraInfo2ArucoCamParams(
     const sensor_msgs::CameraInfo &cam_info, bool useRectifiedParameters) {
   // Alocation of memory for calibration data
   cv::Mat intrinsics(3, 3, CV_64F);
@@ -172,7 +172,7 @@ bool ArucoMapping::rosCameraInfo2ArucoCamParams(
   }
 }
 
-bool ArucoMapping::parseCalibrationFile(std::string calib_filename) {
+bool ArucoMappingFixed::parseCalibrationFile(std::string calib_filename) {
   sensor_msgs::CameraInfo camera_calibration_data;
   std::string camera_name = "camera";
 
@@ -213,7 +213,7 @@ bool ArucoMapping::parseCalibrationFile(std::string calib_filename) {
   }
 }
 
-void ArucoMapping::imageCallback(
+void ArucoMappingFixed::imageCallback(
     const sensor_msgs::ImageConstPtr &original_image) {
   // Create cv_brigde instance
   cv_bridge::CvImagePtr cv_ptr;
@@ -249,7 +249,8 @@ void ArucoMapping::imageCallback(
   }
 }
 
-bool ArucoMapping::processImage(cv::Mat input_image, cv::Mat output_image) {
+bool ArucoMappingFixed::processImage(cv::Mat input_image,
+                                     cv::Mat output_image) {
   std::vector<aruco::Marker> temp_markers;
 
   // Set visibility flag to false for all markers
@@ -263,91 +264,7 @@ bool ArucoMapping::processImage(cv::Mat input_image, cv::Mat output_image) {
   detector_.detect(input_image, temp_markers, aruco_calib_params_,
                    marker_size_);
 
-  // If no marker found, print statement
-  if (temp_markers.size() == 0)
-    ROS_DEBUG("No marker found!");
-
-  //------------------------------------------------------
-  // FIRST MARKER DETECTED
-  //------------------------------------------------------
-  if ((temp_markers.size() > 0) && (first_marker_detected_ == false)) {
-    // Set flag
-    first_marker_detected_ = true;
-
-    // Detect lowest marker ID
-    lowest_marker_id_ = temp_markers[0].id;
-    for (size_t i = 0; i < temp_markers.size(); i++) {
-      if (temp_markers[i].id < lowest_marker_id_)
-        lowest_marker_id_ = temp_markers[i].id;
-    }
-
-    ROS_DEBUG_STREAM("The lowest Id marker " << lowest_marker_id_);
-
-    // Identify lowest marker ID with base_marker's origin
-    markers_[0].marker_id = lowest_marker_id_;
-
-    markers_[0].geometry_msg_to_base_marker.position.x = 0;
-    markers_[0].geometry_msg_to_base_marker.position.y = 0;
-    markers_[0].geometry_msg_to_base_marker.position.z = 0;
-
-    markers_[0].geometry_msg_to_base_marker.orientation.x = 0;
-    markers_[0].geometry_msg_to_base_marker.orientation.y = 0;
-    markers_[0].geometry_msg_to_base_marker.orientation.z = 0;
-    markers_[0].geometry_msg_to_base_marker.orientation.w = 1;
-
-    // Relative position and Global position
-    markers_[0].geometry_msg_to_previous.position.x = 0;
-    markers_[0].geometry_msg_to_previous.position.y = 0;
-    markers_[0].geometry_msg_to_previous.position.z = 0;
-
-    markers_[0].geometry_msg_to_previous.orientation.x = 0;
-    markers_[0].geometry_msg_to_previous.orientation.y = 0;
-    markers_[0].geometry_msg_to_previous.orientation.z = 0;
-    markers_[0].geometry_msg_to_previous.orientation.w = 1;
-
-    // Transformation Pose to TF
-    tf::Vector3 position;
-    position.setX(0);
-    position.setY(0);
-    position.setZ(0);
-
-    tf::Quaternion rotation;
-    rotation.setX(0);
-    rotation.setY(0);
-    rotation.setZ(0);
-    rotation.setW(1);
-
-    markers_[0].tf_to_previous.setOrigin(position);
-    markers_[0].tf_to_previous.setRotation(rotation);
-
-    // Relative position of first marker equals Global position
-    markers_[0].tf_to_base_marker = markers_[0].tf_to_previous;
-
-    // Increase count
-    marker_counter_++;
-
-    // Set sign of visibility of first marker
-    markers_[0].visible = true;
-
-    ROS_INFO_STREAM("First marker with ID: " << markers_[0].marker_id
-                                             << " detected");
-
-    // First marker does not have any previous marker
-    markers_[0].previous_marker_id = THIS_IS_FIRST_MARKER;
-  }
-
-  publishTfs();
-  //------------------------------------------------------
-  // FOR EVERY MARKER DO
-  //------------------------------------------------------
-
-  // Flag to keep info if any_known marker_visible in actual image
-  bool any_known_marker_visible = false;
-
   for (size_t i = 0; i < temp_markers.size(); i++) {
-    int index;
-    int current_marker_id = temp_markers[i].id;
-
     // Draw marker convex, ID, cube and axis
     temp_markers[i].draw(output_image, cv::Scalar(0, 0, 255), 2);
     aruco::CvDrawingUtils::draw3dCube(output_image, temp_markers[i],
@@ -355,218 +272,26 @@ bool ArucoMapping::processImage(cv::Mat input_image, cv::Mat output_image) {
     aruco::CvDrawingUtils::draw3dAxis(output_image, temp_markers[i],
                                       aruco_calib_params_);
 
-    // Existing marker ?
-    bool existing = false;
-    int temp_counter = 0;
+    auto detectedMarker = &temp_markers[i];
 
-    while ((existing == false) && (temp_counter < marker_counter_)) {
-      if (markers_[temp_counter].marker_id == current_marker_id) {
-        index = temp_counter;
-        existing = true;
-        ROS_DEBUG_STREAM("Existing marker with ID: " << current_marker_id
-                                                     << "found");
-      }
-      temp_counter++;
-    }
+    auto camera_tf = arucoMarker2Tf(*detectedMarker);
+    auto camera_tf_inverse = camera_tf.inverse();
 
-    // New marker ?
-    if (existing == false) {
-      index = marker_counter_;
-      markers_[index].marker_id = current_marker_id;
-      existing = true;
-      ROS_DEBUG_STREAM("New marker with ID: " << current_marker_id << " found");
-    }
-
-    // Change visibility flag of new marker
-    for (size_t j = 0; j < marker_counter_; j++) {
-      for (size_t k = 0; k < temp_markers.size(); k++) {
-        if (markers_[j].marker_id == temp_markers[k].id)
-          markers_[j].visible = true;
-      }
-    }
-
-    auto marker_info = &markers_[index];
-
-    if (!first_marker_detected_)
-      break;
-
-    // Naming - TFs
-    std::stringstream camera_tf_id;
     std::stringstream marker_tf_id;
+     marker_tf_id << "aruco_marker_" << detectedMarker->id;
 
-    camera_tf_id << "camera_" << marker_info->marker_id;
-    marker_tf_id << "marker_" << marker_info->marker_id;
-
-    marker_info->current_camera_tf = arucoMarker2Tf(temp_markers[i]);
-    marker_info->current_camera_tf_inverse =
-        marker_info->current_camera_tf.inverse();
-
-    tf::Vector3 marker_origin = marker_info->current_camera_tf.getOrigin();
-    marker_info->current_camera_pose.position.x = marker_origin.getX();
-    marker_info->current_camera_pose.position.y = marker_origin.getY();
-    marker_info->current_camera_pose.position.z = marker_origin.getZ();
-
-    tf::Quaternion marker_quaternion =
-        marker_info->current_camera_tf.getRotation();
-    marker_info->current_camera_pose.orientation.x = marker_quaternion.getX();
-    marker_info->current_camera_pose.orientation.y = marker_quaternion.getY();
-    marker_info->current_camera_pose.orientation.z = marker_quaternion.getZ();
-    marker_info->current_camera_pose.orientation.w = marker_quaternion.getW();
-
-    // Array ID of markers, which position of new marker is calculated
-    int last_marker_index;
-    std::stringstream camera_tf_id_old;
-    std::stringstream marker_tf_id_old;
-
-    // TF from marker to its camera
-    broadcaster_.sendTransform(tf::StampedTransform(
-        marker_info->current_camera_tf_inverse, ros::Time::now(),
-        marker_tf_id.str(), camera_tf_id.str()));
-
-    // Testing, if is possible calculate position of a new marker to old known
-    // marker
-    for (int k = 0; k < index; k++) {
-      auto minfo = &markers_[k];
-      if ((minfo->visible == true)) {
-        if (minfo->previous_marker_id != -1) {
-          any_known_marker_visible = true;
-          camera_tf_id_old << "camera_" << minfo->marker_id;
-          marker_tf_id_old << "marker_" << minfo->marker_id;
-          marker_info->previous_marker_id = minfo->marker_id;
-          last_marker_index = k;
-
-          // TF from marker to its camera
-          broadcaster_.sendTransform(tf::StampedTransform(
-              marker_info->current_camera_tf_inverse, ros::Time::now(),
-              marker_tf_id.str(), camera_tf_id.str()));
-          // TF from old camera (should be new camera) to marker
-          broadcaster_.sendTransform(tf::StampedTransform(
-              marker_info->current_camera_tf, ros::Time::now(),
-              camera_tf_id_old.str(), marker_tf_id.str()));
-          // TF from old marker to old camera
-          broadcaster_.sendTransform(tf::StampedTransform(
-              minfo->current_camera_tf_inverse, ros::Time::now(),
-              marker_tf_id_old.str(), camera_tf_id_old.str()));
-          ros::Duration(BROADCAST_WAIT_INTERVAL).sleep();
-
-          try {
-            listener_->waitForTransform(
-                marker_tf_id_old.str(), marker_tf_id.str(), ros::Time(0),
-                ros::Duration(WAIT_FOR_TRANSFORM_INTERVAL));
-            listener_->lookupTransform(marker_tf_id_old.str(),
-                                       marker_tf_id.str(), ros::Time(0),
-                                       marker_info->tf_to_previous);
-
-            // Save origin and quaternion of calculated TF
-            marker_origin = marker_info->tf_to_previous.getOrigin();
-            marker_quaternion = marker_info->tf_to_previous.getRotation();
-
-            //            // If plane type selected roll, pitch and Z axis are
-            //            zero
-            //            if(space_type_ == "plane")
-            //            {
-            //              double roll, pitch, yaw;
-            //              tf::Matrix3x3(marker_quaternion).getRPY(roll,pitch,yaw);
-            //              roll = 0;
-            //              pitch = 0;
-            //              marker_origin.setZ(0);
-            //              marker_quaternion.setRPY(pitch,roll,yaw);
-            //            }
-
-            marker_info->tf_to_previous.setRotation(marker_quaternion);
-            marker_info->tf_to_previous.setOrigin(marker_origin);
-
-            marker_origin = marker_info->tf_to_previous.getOrigin();
-            marker_info->geometry_msg_to_previous.position.x =
-                marker_origin.getX();
-            marker_info->geometry_msg_to_previous.position.y =
-                marker_origin.getY();
-            marker_info->geometry_msg_to_previous.position.z =
-                marker_origin.getZ();
-
-            marker_quaternion = marker_info->tf_to_previous.getRotation();
-            marker_info->geometry_msg_to_previous.orientation.x =
-                marker_quaternion.getX();
-            marker_info->geometry_msg_to_previous.orientation.y =
-                marker_quaternion.getY();
-            marker_info->geometry_msg_to_previous.orientation.z =
-                marker_quaternion.getZ();
-            marker_info->geometry_msg_to_previous.orientation.w =
-                marker_quaternion.getW();
-
-            marker_origin = marker_info->current_camera_tf_inverse.getOrigin();
-            marker_info->current_camera_pose.position.x = marker_origin.getX();
-            marker_info->current_camera_pose.position.y = marker_origin.getY();
-            marker_info->current_camera_pose.position.z = marker_origin.getZ();
-
-            marker_quaternion =
-                marker_info->current_camera_tf_inverse.getRotation();
-            marker_info->current_camera_pose.orientation.x =
-                marker_quaternion.getX();
-            marker_info->current_camera_pose.orientation.y =
-                marker_quaternion.getY();
-            marker_info->current_camera_pose.orientation.z =
-                marker_quaternion.getZ();
-            marker_info->current_camera_pose.orientation.w =
-                marker_quaternion.getW();
-          } catch (tf::TransformException &e) {
-            ROS_ERROR("Not able to lookup transform: %s", e.what());
-          }
-          break;
-        }
-      }
-    }
-
-    if (index == marker_counter_) {
-      ROS_INFO("New marker detected: %d", marker_info->marker_id);
-      marker_counter_++;
-    }
+     // TF from marker to its camera
+     broadcaster_.sendTransform(tf::StampedTransform(
+         camera_tf_inverse, ros::Time::now(),
+         marker_tf_id.str(), "camera"));
+     break;
   }
-  publishTfs();
-  //------------------------------------------------------
-  // Compute which of visible markers is the closest to the camera
-  //------------------------------------------------------
-  if (any_known_marker_visible) {
-    double minimal_distance = INIT_MIN_SIZE_VALUE;
-    for (int k = 0; k < num_of_markers_; k++) {
-      double a, b, c, size;
-      auto minfo = &markers_[k];
-      // If marker is visible, distance is calculated
-      if (minfo->visible == true) {
-        a = minfo->current_camera_pose.position.x;
-        b = minfo->current_camera_pose.position.y;
-        c = minfo->current_camera_pose.position.z;
-        size = std::sqrt((a * a) + (b * b) + (c * c));
-        if (size < minimal_distance) {
-          minimal_distance = size;
-          closest_camera_id_ = minfo->marker_id;
-        }
-      }
-    }
-    std::stringstream closest_camera_tf_name;
-    closest_camera_tf_name << "camera_" << closest_camera_id_;
-
-    listener_->waitForTransform("base_marker", closest_camera_tf_name.str(),
-                                ros::Time(0),
-                                ros::Duration(WAIT_FOR_TRANSFORM_INTERVAL));
-    try {
-      listener_->lookupTransform("base_marker", closest_camera_tf_name.str(),
-                                 ros::Time(0), base_marker_position_transform_);
-      broadcaster_.sendTransform(
-          tf::StampedTransform(base_marker_position_transform_,
-                               ros::Time::now(), "base_marker", "camera"));
-    } catch (tf::TransformException &ex) {
-      ROS_ERROR("Not able to lookup transform");
-    }
-  }
-
-  publishTfs();
   return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
-void ArucoMapping::publishTfs() {
+void ArucoMappingFixed::publishTfs() {
   if (first_marker_detected_) {
     // Actual Marker
     std::stringstream marker_tf_id;
@@ -609,8 +334,8 @@ void ArucoMapping::publishTfs() {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
-void ArucoMapping::publishMarker(geometry_msgs::Pose marker_pose, int marker_id,
-                                 int index) {
+void ArucoMappingFixed::publishMarker(geometry_msgs::Pose marker_pose,
+                                      int marker_id, int index) {
   visualization_msgs::Marker vis_marker;
 
   if (index == 0)
@@ -644,7 +369,7 @@ void ArucoMapping::publishMarker(geometry_msgs::Pose marker_pose, int marker_id,
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
-tf::Transform ArucoMapping::arucoMarker2Tf(const aruco::Marker &marker) {
+tf::Transform ArucoMappingFixed::arucoMarker2Tf(const aruco::Marker &marker) {
   cv::Mat marker_rotation(3, 3, CV_32FC1);
   cv::Rodrigues(marker.Rvec, marker_rotation);
   cv::Mat marker_translation = marker.Tvec;

@@ -88,8 +88,14 @@ SET(${PROJECT_NAME}_INCLUDE_DIRS
     include
     )
 
-SET(SOURCES ${SRCPATH}main.cpp
-            ${SRCPATH}aruco_mapping.cpp)
+SET(SOURCES ${SRCPATH}aruco_mapping_main.cpp
+            ${SRCPATH}aruco_mapping.cpp
+            )
+
+
+SET(SOURCES2 ${SRCPATH}aruco_mapping_fixed_main.cpp
+            ${SRCPATH}aruco_mapping_fixed.cpp
+            )
 
 add_message_files(FILES ArucoMarker.msg)
 
@@ -103,7 +109,12 @@ add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS} aruco_mapping_gencpp
 target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS} aruco ${catkin_LIBRARIES})
 target_include_directories(${PROJECT_NAME} PUBLIC ${${PROJECT_NAME}_INCLUDE_DIRS})
 
-install(TARGETS ${PROJECT_NAME}
+add_executable(aruco_mapping_fixed ${SOURCES2})
+add_dependencies(aruco_mapping_fixed ${catkin_EXPORTED_TARGETS} aruco_mapping_gencpp )
+target_link_libraries(aruco_mapping_fixed ${OpenCV_LIBS} aruco ${catkin_LIBRARIES})
+target_include_directories(aruco_mapping_fixed PUBLIC ${${PROJECT_NAME}_INCLUDE_DIRS})
+
+install(TARGETS ${PROJECT_NAME} aruco_mapping_fixed
         LIBRARY DESTINATION "lib"
         RUNTIME DESTINATION "bin"
         )
