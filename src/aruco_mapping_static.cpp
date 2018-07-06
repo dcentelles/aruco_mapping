@@ -34,7 +34,7 @@
 #ifndef ARUCO_MAPPING_CPP
 #define ARUCO_MAPPING_CPP
 
-#include <aruco_mapping/aruco_mapping_fixed.h>
+#include <aruco_mapping/aruco_mapping_static.h>
 #include <sensor_msgs/CameraInfo.h>
 
 using namespace std;

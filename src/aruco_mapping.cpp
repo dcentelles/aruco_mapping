@@ -37,6 +37,7 @@
 #include <aruco_mapping/aruco_mapping.h>
 #include <sensor_msgs/CameraInfo.h>
 
+using namespace std;
 namespace aruco_mapping {
 
 ArucoMapping::ArucoMapping(ros::NodeHandle &nh)
@@ -45,13 +46,12 @@ ArucoMapping::ArucoMapping(ros::NodeHandle &nh)
       marker_size_(0.1),                    // Marker size in m
       calib_filename_("empty"),             // Calibration filepath
       space_type_("plane"),                 // Space type - 2D plane
-      roi_allowed_(false),                  // ROI not allowed by default
       first_marker_detected_(false), // First marker not detected by defualt
-      lowest_marker_id_(-1),         // Lowest marker ID
+      base_marker_id_(-1),           // Lowest marker ID
       marker_counter_(0),            // Reset marker counter
       closest_camera_id_(-1), // Reset closest camera id (camera_{marker's id})
       gui_(true), debug_image_(true), debug_image_topic_("debug_image"),
-      image_topic_("/image_raw"), nh_("~"), useCamInfo_(false)
+      image_topic_("/image_raw"), nh_("~"), desired_base_marker_id_(-1)
 
 {
   double temp_marker_size;
@@ -61,18 +61,12 @@ ArucoMapping::ArucoMapping(ros::NodeHandle &nh)
   nh_.getParam("marker_size", temp_marker_size);
   nh_.getParam("num_of_markers", num_of_markers_);
   nh_.getParam("pace_type", space_type_);
-  nh_.getParam("roi_allowed", roi_allowed_);
-  nh_.getParam("roi_x", roi_x_);
-  nh_.getParam("roi_y", roi_y_);
-  nh_.getParam("roi_w", roi_w_);
-  nh_.getParam("roi_h", roi_h_);
   nh_.getParam("gui", gui_);
   nh_.getParam("debug_image", debug_image_);
   nh_.getParam("debug_image_topic", debug_image_topic_);
   nh_.getParam("image_topic", image_topic_);
-  nh_.param<bool>("use_camera_info", useCamInfo_, true);
-  nh_.param<bool>("use_rectified_images", useRectifiedImages_, true);
   nh_.getParam("camera_info", camera_info_);
+  nh_.getParam("base_marker", desired_base_marker_id_);
   // Double to float conversion
   marker_size_ = float(temp_marker_size);
 
@@ -83,11 +77,6 @@ ArucoMapping::ArucoMapping(ros::NodeHandle &nh)
     ROS_INFO_STREAM("Number of markers: " << num_of_markers_);
     ROS_INFO_STREAM("Marker Size: " << marker_size_);
     ROS_INFO_STREAM("Type of space: " << space_type_);
-    ROS_INFO_STREAM("ROI allowed: " << roi_allowed_);
-    ROS_INFO_STREAM("ROI x-coor: " << roi_x_);
-    ROS_INFO_STREAM("ROI y-coor: " << roi_x_);
-    ROS_INFO_STREAM("ROI width: " << roi_w_);
-    ROS_INFO_STREAM("ROI height: " << roi_h_);
     ROS_INFO_STREAM("debug_image: " << debug_image_);
     ROS_INFO_STREAM("debug_image_topic: " << debug_image_topic_);
     ROS_INFO_STREAM("image_topic: " << image_topic_);
@@ -98,20 +87,27 @@ ArucoMapping::ArucoMapping(ros::NodeHandle &nh)
   marker_visualization_pub_ =
       nh.advertise<visualization_msgs::Marker>("aruco_markers", 1);
 
-  if (useCamInfo_) {
+  // detector_.setDetectionMode(aruco::DetectionMode::DM_NORMAL);
+  detector_.setDictionary(aruco::Dictionary::DICT_TYPES::ARUCO_MIP_36h12);
+  detector_.setCornerRefinementMethod(
+      aruco::MarkerDetector::CornerRefinementMethod::LINES);
+  detector_.setMinMaxSize(0.03, 0.8);
+
+  if (camera_info_ != "") {
     sensor_msgs::CameraInfoConstPtr msg =
         ros::topic::waitForMessage<sensor_msgs::CameraInfo>(camera_info_,
                                                             nh_); //, 10.0);
-    rosCameraInfo2ArucoCamParams(*msg, useRectifiedImages_);
+    rosCameraInfo2ArucoCamParams(*msg);
     ROS_INFO("Camera parameters from camera_info topic");
   } else {
 
     // Parse data from calibration file
     parseCalibrationFile(calib_filename_);
   }
+
   // Initialize OpenCV window
   if (gui_)
-    cv::namedWindow("Mono8", CV_WINDOW_AUTOSIZE);
+    cv::namedWindow("BGR8", CV_WINDOW_AUTOSIZE);
 
   // Resize marker container
   markers_.resize(num_of_markers_);
@@ -130,46 +126,33 @@ ArucoMapping::ArucoMapping(ros::NodeHandle &nh)
   image_transport::ImageTransport it(nh);
   img_sub_ = it.subscribe(image_topic_, 1,
                           &aruco_mapping::ArucoMapping::imageCallback, this);
-  detector_.setDetectionMode(aruco::DetectionMode::DM_NORMAL);
-  detector_.setDictionary(aruco::Dictionary::DICT_TYPES::ARUCO_MIP_36h12);
 }
 
 ArucoMapping::~ArucoMapping() { delete listener_; }
 
 bool ArucoMapping::rosCameraInfo2ArucoCamParams(
-    const sensor_msgs::CameraInfo &cam_info, bool useRectifiedParameters) {
-  // Alocation of memory for calibration data
-  cv::Mat intrinsics(3, 3, CV_64F);
-  cv::Mat distortion_coeff(4, 1, CV_64F);
-  cv::Size image_size;
+    const sensor_msgs::CameraInfo &msg) {
+  cout << "Reading calibration from camera_info topic" << endl;
+  cv::Mat cameraMatrix(3, 3, CV_64F);
+  cv::Mat distortionCoeff(4, 1, CV_64F);
 
-  image_size.width = cam_info.width;
-  image_size.height = cam_info.height;
-
-  for (size_t i = 0; i < 3; i++)
-    for (size_t j = 0; j < 3; j++)
-      intrinsics.at<double>(i, j) = cam_info.K.at(3 * i + j);
-
-  for (size_t i = 0; i < 4; i++)
-    distortion_coeff.at<double>(i, 0) = cam_info.D.at(i);
-
-  ROS_INFO_STREAM("Image width: " << image_size.width);
-  ROS_INFO_STREAM("Image height: " << image_size.height);
-  ROS_INFO_STREAM("Intrinsics:" << std::endl << intrinsics);
-  ROS_INFO_STREAM("Distortion: " << distortion_coeff);
-
-  // Load parameters to aruco_calib_param_ for aruco detection
-  aruco_calib_params_.setParams(intrinsics, distortion_coeff, image_size);
-
-  // Simple check if calibration data meets expected values
-  if ((intrinsics.at<double>(2, 2) == 1) &&
-      (distortion_coeff.at<double>(0, 4) == 0)) {
-    ROS_INFO_STREAM("Calibration data loaded successfully");
-    return true;
+  for (int i = 0; i < 9; ++i)
+    cameraMatrix.at<double>(i % 3, i - (i % 3) * 3) = msg.K[i];
+  if (msg.D.size() == 4) {
+    for (int i = 0; i < 4; ++i)
+      distortionCoeff.at<double>(i, 0) = msg.D[i];
   } else {
-    ROS_WARN("Wrong calibration data, check calibration file and filepath");
-    return false;
+    cout << "Length of camera_info D vector is not 4!!!" << endl;
+    for (int i = 0; i < 4; ++i)
+      distortionCoeff.at<double>(i, 0) = msg.D[i];
   }
+
+  aruco_calib_params_.setParams(cameraMatrix, distortionCoeff,
+                                cv::Size(msg.height, msg.width));
+
+  cout << "Camera Matrix is: " << cameraMatrix << endl;
+  cout << "Distortion coefficients are: " << distortionCoeff << endl;
+  cout << "Height and width are: " << msg.height << " , " << msg.width << endl;
 }
 
 bool ArucoMapping::parseCalibrationFile(std::string calib_filename) {
@@ -214,43 +197,22 @@ bool ArucoMapping::parseCalibrationFile(std::string calib_filename) {
 }
 
 void ArucoMapping::imageCallback(
-    const sensor_msgs::ImageConstPtr &original_image) {
+    // const sensor_msgs::ImageConstPtr &original_image) {
+    const sensor_msgs::ImageConstPtr &msg) {
   // Create cv_brigde instance
-  cv_bridge::CvImagePtr cv_ptr;
-  try {
-    cv_ptr = cv_bridge::toCvCopy(original_image,
-                                 sensor_msgs::image_encodings::MONO8);
-  } catch (cv_bridge::Exception &e) {
-    ROS_ERROR("Not able to convert sensor_msgs::Image to OpenCV::Mat format %s",
-              e.what());
-    return;
-  }
 
-  // sensor_msgs::Image to OpenCV Mat structure
-  last_image_ = cv_ptr->image;
-
-  // region of interest
-  if (roi_allowed_ == true)
-    last_image_ = cv_ptr->image(cv::Rect(roi_x_, roi_y_, roi_w_, roi_h_));
-
-  // Marker detection
-  processImage(last_image_, last_image_);
-
-  // Show image
-  if (gui_) {
-    cv::imshow("Mono8", last_image_);
-    cv::waitKey(10);
-  }
-  if (debug_image_) {
-    debug_image_msg_ =
-        cv_bridge::CvImage(std_msgs::Header(), "mono8", last_image_)
-            .toImageMsg();
-    marker_debug_image_pub_.publish(debug_image_msg_);
+  if (true) {
+    cv_bridge::CvImageConstPtr cv_ptr;
+    cv_ptr = cv_bridge::toCvShare(msg, sensor_msgs::image_encodings::BGR8);
+    processImage(cv_ptr->image);
+  } else {
+    cout << "Camera info not received" << endl;
   }
 }
 
-bool ArucoMapping::processImage(cv::Mat input_image, cv::Mat output_image) {
+bool ArucoMapping::processImage(cv::Mat input_image) {
   std::vector<aruco::Marker> temp_markers;
+  cv::Mat displayimg = input_image.clone();
 
   // Set visibility flag to false for all markers
   for (size_t i = 0; i < num_of_markers_; i++)
@@ -267,24 +229,59 @@ bool ArucoMapping::processImage(cv::Mat input_image, cv::Mat output_image) {
   if (temp_markers.size() == 0)
     ROS_DEBUG("No marker found!");
 
+  for (size_t i = 0; i < temp_markers.size(); i++) {
+
+    auto detectedMarker = &temp_markers[i];
+    detectedMarker->calculateExtrinsics(marker_size_, aruco_calib_params_,
+                                        false);
+
+    // Draw marker convex, ID, cube and axis
+    temp_markers[i].draw(displayimg, cv::Scalar(0, 0, 255), 2);
+    aruco::CvDrawingUtils::draw3dCube(displayimg, temp_markers[i],
+                                      aruco_calib_params_);
+    aruco::CvDrawingUtils::draw3dAxis(displayimg, temp_markers[i],
+                                      aruco_calib_params_);
+  }
+
+  if (gui_) {
+    cv::imshow("BGR8", displayimg);
+    cv::waitKey(20);
+  }
+  if (debug_image_) {
+    debug_image_msg_ =
+        cv_bridge::CvImage(std_msgs::Header(), "bgr8", displayimg).toImageMsg();
+    marker_debug_image_pub_.publish(debug_image_msg_);
+  }
   //------------------------------------------------------
   // FIRST MARKER DETECTED
   //------------------------------------------------------
   if ((temp_markers.size() > 0) && (first_marker_detected_ == false)) {
-    // Set flag
-    first_marker_detected_ = true;
-
-    // Detect lowest marker ID
-    lowest_marker_id_ = temp_markers[0].id;
-    for (size_t i = 0; i < temp_markers.size(); i++) {
-      if (temp_markers[i].id < lowest_marker_id_)
-        lowest_marker_id_ = temp_markers[i].id;
+    if (desired_base_marker_id_ >= 0) {
+      for (size_t i = 0; i < temp_markers.size(); i++) {
+        if (temp_markers[i].id == desired_base_marker_id_) {
+          base_marker_id_ = temp_markers[i].id;
+          break;
+        }
+      }
+      if (base_marker_id_ !=
+          desired_base_marker_id_) { // base marker not detected yet
+        return false;
+      }
+    } else {
+      // Detect lowest marker ID
+      base_marker_id_ = temp_markers[0].id;
+      for (size_t i = 1; i < temp_markers.size(); i++) {
+        if (temp_markers[i].id < base_marker_id_)
+          base_marker_id_ = temp_markers[i].id;
+      }
     }
 
-    ROS_DEBUG_STREAM("The lowest Id marker " << lowest_marker_id_);
+    // Set flag
+    first_marker_detected_ = true;
+    ROS_DEBUG_STREAM("Base marker id: " << base_marker_id_);
 
     // Identify lowest marker ID with base_marker's origin
-    markers_[0].marker_id = lowest_marker_id_;
+    markers_[0].marker_id = base_marker_id_;
 
     markers_[0].geometry_msg_to_base_marker.position.x = 0;
     markers_[0].geometry_msg_to_base_marker.position.y = 0;
@@ -347,13 +344,6 @@ bool ArucoMapping::processImage(cv::Mat input_image, cv::Mat output_image) {
   for (size_t i = 0; i < temp_markers.size(); i++) {
     int index;
     int current_marker_id = temp_markers[i].id;
-
-    // Draw marker convex, ID, cube and axis
-    temp_markers[i].draw(output_image, cv::Scalar(0, 0, 255), 2);
-    aruco::CvDrawingUtils::draw3dCube(output_image, temp_markers[i],
-                                      aruco_calib_params_);
-    aruco::CvDrawingUtils::draw3dAxis(output_image, temp_markers[i],
-                                      aruco_calib_params_);
 
     // Existing marker ?
     bool existing = false;
@@ -559,7 +549,6 @@ bool ArucoMapping::processImage(cv::Mat input_image, cv::Mat output_image) {
       ROS_ERROR("Not able to lookup transform");
     }
   }
-
   publishTfs();
   return true;
 }

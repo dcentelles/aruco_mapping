@@ -114,30 +114,22 @@ private:
   tf::Transform arucoMarker2Tf(const aruco::Marker &marker);
 
   /** \brief Process actual image, detect markers and compute poses */
-  bool processImage(cv::Mat input_image,cv::Mat output_image);
+  bool processImage(cv::Mat input_image);
 
   /**
      * @brief rosCameraInfo2ArucoCamParams gets the camera intrinsics from a CameraInfo message and copies them
      *                                     to aruco_ros own data structure
      * @param cam_info
-     * @param useRectifiedParameters if true, the intrinsics are taken from cam_info.P and the distortion parameters
-     *                               are set to 0. Otherwise, cam_info.K and cam_info.D are taken.
      * @return
      */
-  bool  rosCameraInfo2ArucoCamParams(const sensor_msgs::CameraInfo& cam_info,
-                                                                  bool useRectifiedParameters);
+  bool  rosCameraInfo2ArucoCamParams(const sensor_msgs::CameraInfo& cam_info);
 
   //Launch file params
   std::string calib_filename_;                    
   std::string space_type_;                        
   float marker_size_;
-  int num_of_markers_;
-  bool roi_allowed_;
-  int  roi_x_;                                      
-  int  roi_y_;                                      
-  int  roi_w_;                                     
-  int  roi_h_;
-  bool gui_, debug_image_, useCamInfo_, useRectifiedImages_;
+  int num_of_markers_, desired_base_marker_id_;
+  bool gui_, debug_image_;
   std::string debug_image_topic_, image_topic_, camera_info_;
   sensor_msgs::ImagePtr debug_image_msg_;
   ros::NodeHandle nh_;
@@ -164,7 +156,7 @@ private:
   int marker_counter_;
   int marker_counter_previous_;
   int closest_camera_id_;
-  int lowest_marker_id_;
+  int base_marker_id_;
   bool first_marker_detected_;
   
   tf::TransformListener *listener_;

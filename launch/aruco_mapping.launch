@@ -1,16 +1,15 @@
 <?xml version="1.0"?>
 <launch> 
+  <arg name="base_marker" default="-1" />
   <arg name="rviz" default="false"/>
   <arg name="gui" default="false" />
   <arg name="debug_image" default="true" />
-  <arg name="use_camera_info" default="true" />
-  <arg name="use_rectified_images" default="true" />
   <arg name="camera_info" default="/camera_info" />
   <arg name="debug_image_topic" default="debug_image" />
   <arg name="image_topic" default="/camera/image" />
   <arg name="image_transport" default="raw" />
   <arg name="num_of_markers" default="200" />
-  <arg name="marker_size" default="0.11" />
+  <arg name="marker_size" default="0.1095" />
   <arg name="calibration_file" default="$(find aruco_mapping)/data/raspicam_v1_underwater.ini" />
 
   <!-- RVIZ -->
@@ -18,20 +17,18 @@
 
   <!-- ArUco mapping -->
   <node pkg="aruco_mapping" type="aruco_mapping" name="aruco_mapping" output="screen">
+    <param name="base_marker" type="int" value="$(arg base_marker)"/>
     <param name="image_topic" type="string" value="$(arg image_topic)"/>
     <param name="image_transport" type="string" value="$(arg image_transport)" />
     <param name="calibration_file" type="string" value="$(arg calibration_file)"/>
     <param name="num_of_markers" type="int" value="$(arg num_of_markers)" />
     <param name="marker_size" type="double" value="$(arg marker_size)"/>
-    <param name="space_type" type="string" value="plane" />
     <param name="roi_allowed" type="bool" value="false" />
     <param name="roi_x" type="int" value="0" /> 
     <param name="roi_y" type="int" value="0" /> 
     <param name="roi_width" type="int" value="640" /> 
     <param name="roi_height" type="int" value="480" />  
     <param name="gui" type="bool" value="$(arg gui)" />
-    <param name="use_rectified_images" type="bool" value="$(arg use_rectified_images)" />
-    <param name="use_camera_info" type="bool" value="$(arg use_camera_info)" />
     <param name="camera_info" type="string" value="$(arg camera_info)" />
     <param name="debug_image" type="bool" value="$(arg debug_image)" />
     <param name="debug_image_topic" type="string" value="$(arg debug_image_topic)" />

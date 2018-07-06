@@ -12,11 +12,11 @@ alt="Aruco mapping" width="480" height="360" border="10" /></a>
 
 # Install
 
-1. Download aruco-3.0.10.zip from https://sourceforge.net/projects/aruco/files/?source=navbar.
+1. Download aruco-2.0.19.zip from https://sourceforge.net/projects/aruco/files/2.0.19/aruco-2.0.19.zip/download
 2. Build ArUco and install it:
 ```bash
-$ unzip aruco-3.0.10.zip
-$ cd aruco-3.0.10
+$ unzip aruco-2.0.19.zip
+$ cd aruco-2.0.19
 $ mkdir build
 $ cd build
 $ cmake ..

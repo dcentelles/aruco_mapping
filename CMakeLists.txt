@@ -93,8 +93,8 @@ SET(SOURCES ${SRCPATH}aruco_mapping_main.cpp
             )
 
 
-SET(SOURCES2 ${SRCPATH}aruco_mapping_fixed_main.cpp
-            ${SRCPATH}aruco_mapping_fixed.cpp
+SET(SOURCES2 ${SRCPATH}aruco_mapping_static_main.cpp
+            ${SRCPATH}aruco_mapping_static.cpp
             )
 
 add_message_files(FILES ArucoMarker.msg)
