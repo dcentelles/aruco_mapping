@@ -104,7 +104,7 @@ private:
   std::string calib_filename_;
   std::string space_type_;
   float marker_size_;
-  bool gui_, debug_image_, useCamInfo_;
+  bool gui_, debug_image_;
   std::string debug_image_topic_, image_topic_, camera_info_;
   sensor_msgs::ImagePtr debug_image_msg_;
   ros::NodeHandle nh_;

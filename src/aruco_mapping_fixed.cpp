@@ -45,7 +45,7 @@ ArucoMappingStatic::ArucoMappingStatic(ros::NodeHandle &nh)
       calib_filename_("empty"), // Calibration filepath
       space_type_("plane"),     // Space type - 2D plane
       gui_(true), debug_image_(true), debug_image_topic_("debug_image"),
-      image_topic_("/image_raw"), nh_("~"), useCamInfo_(false)
+      image_topic_("/image_raw"), nh_("~")
 
 {
   double temp_marker_size;
@@ -58,7 +58,6 @@ ArucoMappingStatic::ArucoMappingStatic(ros::NodeHandle &nh)
   nh_.getParam("debug_image", debug_image_);
   nh_.getParam("debug_image_topic", debug_image_topic_);
   nh_.getParam("image_topic", image_topic_);
-  nh_.param<bool>("use_camera_info", useCamInfo_, true);
   nh_.getParam("camera_info", camera_info_);
   // Double to float conversion
   marker_size_ = float(temp_marker_size);
@@ -79,16 +78,17 @@ ArucoMappingStatic::ArucoMappingStatic(ros::NodeHandle &nh)
   marker_visualization_pub_ =
       nh.advertise<visualization_msgs::Marker>("aruco_markers", 1);
 
-  aruco::MarkerDetector::Params detection_params;
-  detection_params = detector_.getParameters();
-  detection_params.setCornerRefinementMethod(aruco::CORNER_LINES);
-  detection_params.setDetectionMode(aruco::DetectionMode::DM_NORMAL, 0.03);
-  detection_params.enclosedMarker = false;
-  detector_.setParameters(detection_params);
-
+  // ARUCO detector settings
   detector_.setDictionary(aruco::Dictionary::DICT_TYPES::ARUCO_MIP_36h12);
+  detector_.setCornerRefinementMethod(
+      aruco::MarkerDetector::CornerRefinementMethod::LINES);
+  detector_.setMinMaxSize(0.03, 0.8);
+  //  detector_.setThresholdParams(50,50);
+  //  detector_.setThresholdParamRange(10,10); //With 10 10 is slow but more
+  //  detections
+  //  detector_.setCornerRefinementMethod(aruco::MarkerDetector::CornerRefinementMethod::NONE,20);
 
-  if (useCamInfo_) {
+  if (camera_info_ != "") {
     sensor_msgs::CameraInfoConstPtr msg =
         ros::topic::waitForMessage<sensor_msgs::CameraInfo>(camera_info_,
                                                             nh_); //, 10.0);
@@ -203,10 +203,6 @@ bool ArucoMappingStatic::processImage(cv::Mat input_image) {
 
   cv::Mat displayimg = input_image.clone();
 
-  double min_distance = 1000;
-  std::string closer_marker_tf_id;
-  tf::Transform closer_marker_tf;
-  bool valid_detection = false;
   for (size_t i = 0; i < temp_markers.size(); i++) {
 
     auto detectedMarker = &temp_markers[i];
@@ -222,30 +218,11 @@ bool ArucoMappingStatic::processImage(cv::Mat input_image) {
     auto camera_tf = arucoMarker2Tf(*detectedMarker);
     auto camera_tf_inverse = camera_tf.inverse();
 
-
     std::stringstream marker_tf_id;
     marker_tf_id << "aruco_marker_" << detectedMarker->id;
-    //if(detectedMarker->id == 12)
     broadcaster_.sendTransform(tf::StampedTransform(
         camera_tf_inverse, ros::Time::now(), marker_tf_id.str(), "camera"));
-    continue;
-//    auto distance =
-//        camera_tf_inverse.getOrigin().distance(tf::Vector3(0, 0, 0));
-//    if (distance < min_distance) {
-//      min_distance = distance;
-//      std::stringstream marker_tf_id;
-//      marker_tf_id << "aruco_marker_" << detectedMarker->id;
-//      closer_marker_tf_id = marker_tf_id.str();
-//      closer_marker_tf = camera_tf_inverse;
-//      valid_detection = true;
-//    }
   }
-//  ROS_INFO("closer marker: %s", closer_marker_tf_id.c_str ());
-//  if (valid_detection) {
-//    // TF from marker to its camera
-//    broadcaster_.sendTransform(tf::StampedTransform(
-//        closer_marker_tf, ros::Time::now(), closer_marker_tf_id, "camera"));
-//  }
 
   if (gui_) {
     cv::imshow("BGR8", displayimg);
@@ -253,7 +230,7 @@ bool ArucoMappingStatic::processImage(cv::Mat input_image) {
   }
   if (debug_image_) {
     debug_image_msg_ =
-        cv_bridge::CvImage(std_msgs::Header(), "bgr8", last_image_)
+        cv_bridge::CvImage(std_msgs::Header(), "bgr8", displayimg)
             .toImageMsg();
     marker_debug_image_pub_.publish(debug_image_msg_);
   }
@@ -264,62 +241,24 @@ bool ArucoMappingStatic::processImage(cv::Mat input_image) {
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-#define PI 3.14159265358979323846
-void R2Euler(const cv::Mat R, double& RotX, double& RotY, double& RotZ){
-
-    //Computes euler angles from Rotation Matrix
-    if(R.at<double>(2,0) != -1 && R.at<double>(2,0) !=1){
-        RotY=-asin(R.at<double>(2,0));
-        RotX=atan2(R.at<double>(2,1)/cos(RotY),R.at<double>(2,2)/cos(RotY));
-        RotZ=atan2(R.at<double>(1,0)/cos(RotY),R.at<double>(0,0)/cos(RotY));
-    }
-    else{
-        RotZ=0; //Or anything
-        if(R.at<double>(2,0)==-1){
-            RotY=PI/2;
-            RotX=RotZ+atan2(R.at<double>(0,1),R.at<double>(0,2));
-        }
-        else{
-            RotY=-PI/2;
-            RotX=-RotZ+atan2(-R.at<double>(0,1),-R.at<double>(0,2));
-        }
-    }
-}
-
-
 tf::Transform ArucoMappingStatic::arucoMarker2Tf(const aruco::Marker &marker) {
-  cv::Mat tvec, rvec;
-  marker.Tvec.convertTo(tvec, CV_64F);
-  marker.Rvec.convertTo(rvec, CV_64F);
+  //  return transform;
+  cv::Mat rot(3, 3, CV_64FC1);
+  cv::Mat Rvec64;
+  marker.Rvec.convertTo(Rvec64, CV_64FC1);
+  cv::Rodrigues(Rvec64, rot);
+  cv::Mat tran64;
+  marker.Tvec.convertTo(tran64, CV_64FC1);
 
-  cv::Mat Rot(3, 3, CV_64F);
-  cv::Rodrigues(rvec, Rot);
-  double RotX, RotY, RotZ;
-  R2Euler(Rot, RotX, RotY, RotZ);
-  tf::Quaternion quaternion;
-  quaternion.setRPY(RotX, RotY, RotZ);
-  tf::Transform transform;
-  transform.setRotation(quaternion.normalize());
-  transform.setOrigin(tf::Vector3(tvec.at<double>(0, 0), tvec.at<double>(1, 0),
-                                  tvec.at<double>(2, 0)));
+  tf::Matrix3x3 tf_rot(
+      rot.at<double>(0, 0), rot.at<double>(0, 1), rot.at<double>(0, 2),
+      rot.at<double>(1, 0), rot.at<double>(1, 1), rot.at<double>(1, 2),
+      rot.at<double>(2, 0), rot.at<double>(2, 1), rot.at<double>(2, 2));
 
-  return transform;
-  //  cv::Mat rot(3, 3, CV_64FC1);
-  //  cv::Mat Rvec64;
-  //  marker.Rvec.convertTo(Rvec64, CV_64FC1);
-  //  cv::Rodrigues(Rvec64, rot);
-  //  cv::Mat tran64;
-  //  marker.Tvec.convertTo(tran64, CV_64FC1);
+  tf::Vector3 tf_orig(tran64.at<double>(0, 0), tran64.at<double>(1, 0),
+                      tran64.at<double>(2, 0));
 
-  //  tf::Matrix3x3 tf_rot(
-  //      rot.at<double>(0, 0), rot.at<double>(0, 1), rot.at<double>(0, 2),
-  //      rot.at<double>(1, 0), rot.at<double>(1, 1), rot.at<double>(1, 2),
-  //      rot.at<double>(2, 0), rot.at<double>(2, 1), rot.at<double>(2, 2));
-
-  //  tf::Vector3 tf_orig(tran64.at<double>(0, 0), tran64.at<double>(1, 0),
-  //                      tran64.at<double>(2, 0));
-
-  //  return tf::Transform(tf_rot, tf_orig);
+  return tf::Transform(tf_rot, tf_orig);
 }
 
 } // aruco_mapping
