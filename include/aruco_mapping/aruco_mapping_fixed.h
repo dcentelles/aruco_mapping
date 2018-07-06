@@ -63,32 +63,14 @@ namespace aruco_mapping
 {
 
 /** \brief Client class for Aruco mapping */  
-class ArucoMappingFixed
+class ArucoMappingStatic
 {
 public:
   
-  /** \brief Struct to keep marker information */
-  struct MarkerInfo
-  {
-
-    bool visible;                                   // Marker visibile in actual image?
-    int marker_id;                                  // Marker ID
-    int previous_marker_id;                         // Used for chaining markers
-    geometry_msgs::Pose geometry_msg_to_previous;   // Position with respect to previous marker
-    geometry_msgs::Pose geometry_msg_to_base_marker;      // Position with respect to base_marker's origin
-    tf::StampedTransform tf_to_previous;            // TF with respect to previous marker
-    tf::StampedTransform tf_to_base_marker;               // TF with respect to base_marker's origin
-    geometry_msgs::Pose current_camera_pose;        // Position of camera with respect to the marker
-    tf::Transform current_camera_tf;                // TF of camera with respect to the marker
-    tf::Transform current_camera_tf_inverse;
-  };
-
-public:
-  
   /** \brief Construct a client for EZN64 USB control*/  
-  ArucoMappingFixed(ros::NodeHandle &nh);
+  ArucoMappingStatic(ros::NodeHandle &nh);
     
-  ~ArucoMappingFixed();
+  ~ArucoMappingStatic();
 
   /** \brief Callback function to handle image processing*/
   void imageCallback(const sensor_msgs::ImageConstPtr &original_image);
@@ -97,12 +79,6 @@ private:
   
   /** \brief Function to parse data from calibration file*/
   bool parseCalibrationFile(std::string filename);
-
-  /** \brief Function to publish all known TFs*/
-  void publishTfs();
-
-  /** \brief Function to publish all known markers for visualization purposes*/
-  void publishMarker(geometry_msgs::Pose markerPose, int MarkerID, int rank);
 
   /** \brief Publisher of visualization_msgs::Marker message to "aruco_markers" topic*/
   ros::Publisher marker_visualization_pub_;
@@ -114,30 +90,21 @@ private:
   tf::Transform arucoMarker2Tf(const aruco::Marker &marker);
 
   /** \brief Process actual image, detect markers and compute poses */
-  bool processImage(cv::Mat input_image,cv::Mat output_image);
+  bool processImage(cv::Mat input_image);
 
   /**
      * @brief rosCameraInfo2ArucoCamParams gets the camera intrinsics from a CameraInfo message and copies them
      *                                     to aruco_ros own data structure
      * @param cam_info
-     * @param useRectifiedParameters if true, the intrinsics are taken from cam_info.P and the distortion parameters
-     *                               are set to 0. Otherwise, cam_info.K and cam_info.D are taken.
      * @return
      */
-  bool  rosCameraInfo2ArucoCamParams(const sensor_msgs::CameraInfo& cam_info,
-                                                                  bool useRectifiedParameters);
+  bool  rosCameraInfo2ArucoCamParams(const sensor_msgs::CameraInfo& cam_info);
 
   //Launch file params
-  std::string calib_filename_;                    
-  std::string space_type_;                        
+  std::string calib_filename_;
+  std::string space_type_;
   float marker_size_;
-  int num_of_markers_;
-  bool roi_allowed_;
-  int  roi_x_;                                      
-  int  roi_y_;                                      
-  int  roi_w_;                                     
-  int  roi_h_;
-  bool gui_, debug_image_, useCamInfo_, useRectifiedImages_;
+  bool gui_, debug_image_, useCamInfo_;
   std::string debug_image_topic_, image_topic_, camera_info_;
   sensor_msgs::ImagePtr debug_image_msg_;
   ros::NodeHandle nh_;
@@ -146,28 +113,12 @@ private:
 
   /** \brief Publisher of debug image (with marker frames)*/
   image_transport::Publisher  marker_debug_image_pub_;
-  
-  /** \brief Container holding MarkerInfo data about all detected markers */
-  std::vector<MarkerInfo> markers_;
-   
-  /** \brief Actual TF of camera with respect to base_marker's origin */
-  tf::StampedTransform base_marker_position_transform_;
-  
-  /** \brief Actual Pose of camera with respect to base_marker's origin */
-  geometry_msgs::Pose base_marker_position_geometry_msg_;
 
   aruco::CameraParameters aruco_calib_params_;
 
   aruco::MarkerDetector detector_;
   cv::Mat last_image_;
 
-  int marker_counter_;
-  int marker_counter_previous_;
-  int closest_camera_id_;
-  int lowest_marker_id_;
-  bool first_marker_detected_;
-  
-  tf::TransformListener *listener_;
   tf::TransformBroadcaster broadcaster_;
 
   //Consts

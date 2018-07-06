@@ -8,7 +8,7 @@
   <arg name="camera_info" default="/camera_info" />
   <arg name="debug_image_topic" default="debug_image" />
   <arg name="image_topic" default="/camera/image" />
-  <arg name="image_transport" default="compressed" />
+  <arg name="image_transport" default="raw" />
   <arg name="num_of_markers" default="200" />
   <arg name="marker_size" default="0.11" />
   <arg name="calibration_file" default="$(find aruco_mapping)/data/raspicam_v1_underwater.ini" />
@@ -17,7 +17,7 @@
   <node if="$(arg rviz)" name="rviz" pkg="rviz" type="rviz" args="-d $(find aruco_mapping)/launch/aruco_config.rviz" />
 
   <!-- ArUco mapping -->
-  <node pkg="aruco_mapping" type="aruco_mapping_fixed" name="aruco_mapping" output="screen">
+  <node pkg="aruco_mapping" type="aruco_mapping" name="aruco_mapping" output="screen">
     <param name="image_topic" type="string" value="$(arg image_topic)"/>
     <param name="image_transport" type="string" value="$(arg image_transport)" />
     <param name="calibration_file" type="string" value="$(arg calibration_file)"/>

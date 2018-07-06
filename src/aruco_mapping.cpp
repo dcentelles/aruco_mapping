@@ -131,7 +131,7 @@ ArucoMapping::ArucoMapping(ros::NodeHandle &nh)
   img_sub_ = it.subscribe(image_topic_, 1,
                           &aruco_mapping::ArucoMapping::imageCallback, this);
   detector_.setDetectionMode(aruco::DetectionMode::DM_NORMAL);
-  detector_.setDictionary("ARUCO_MIP_36h12");
+  detector_.setDictionary(aruco::Dictionary::DICT_TYPES::ARUCO_MIP_36h12);
 }
 
 ArucoMapping::~ArucoMapping() { delete listener_; }
@@ -645,58 +645,22 @@ void ArucoMapping::publishMarker(geometry_msgs::Pose marker_pose, int marker_id,
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
 tf::Transform ArucoMapping::arucoMarker2Tf(const aruco::Marker &marker) {
-  cv::Mat marker_rotation(3, 3, CV_32FC1);
-  cv::Rodrigues(marker.Rvec, marker_rotation);
-  cv::Mat marker_translation = marker.Tvec;
+  cv::Mat rot(3, 3, CV_64FC1);
+  cv::Mat Rvec64;
+  marker.Rvec.convertTo(Rvec64, CV_64FC1);
+  cv::Rodrigues(Rvec64, rot);
+  cv::Mat tran64;
+  marker.Tvec.convertTo(tran64, CV_64FC1);
 
-  cv::Mat rotate_to_ros(3, 3, CV_32FC1);
-  rotate_to_ros.at<float>(0, 0) = -1.0;
-  rotate_to_ros.at<float>(0, 1) = 0;
-  rotate_to_ros.at<float>(0, 2) = 0;
-  rotate_to_ros.at<float>(1, 0) = 0;
-  rotate_to_ros.at<float>(1, 1) = 0;
-  rotate_to_ros.at<float>(1, 2) = 1.0;
-  rotate_to_ros.at<float>(2, 0) = 0.0;
-  rotate_to_ros.at<float>(2, 1) = 1.0;
-  rotate_to_ros.at<float>(2, 2) = 0.0;
+  tf::Matrix3x3 tf_rot(
+      rot.at<double>(0, 0), rot.at<double>(0, 1), rot.at<double>(0, 2),
+      rot.at<double>(1, 0), rot.at<double>(1, 1), rot.at<double>(1, 2),
+      rot.at<double>(2, 0), rot.at<double>(2, 1), rot.at<double>(2, 2));
 
-  marker_rotation = marker_rotation; // * rotate_to_ros.t();
+  tf::Vector3 tf_orig(tran64.at<double>(0, 0), tran64.at<double>(1, 0),
+                      tran64.at<double>(2, 0));
 
-  // Origin solution
-  tf::Matrix3x3 marker_tf_rot(
-      marker_rotation.at<float>(0, 0), marker_rotation.at<float>(0, 1),
-      marker_rotation.at<float>(0, 2), marker_rotation.at<float>(1, 0),
-      marker_rotation.at<float>(1, 1), marker_rotation.at<float>(1, 2),
-      marker_rotation.at<float>(2, 0), marker_rotation.at<float>(2, 1),
-      marker_rotation.at<float>(2, 2));
-
-  tf::Vector3 marker_tf_tran(marker_translation.at<float>(0, 0),
-                             marker_translation.at<float>(1, 0),
-                             marker_translation.at<float>(2, 0));
-
-  ROS_INFO("(%d) :: [%.5f : %.5f : %.5f]", marker.id,
-           marker_translation.at<float>(0, 0),
-           marker_translation.at<float>(1, 0),
-           marker_translation.at<float>(2, 0));
-  return tf::Transform(marker_tf_rot, marker_tf_tran);
-  //  cv::Mat rot(3, 3, CV_64FC1);
-  //  cv::Mat Rvec64;
-  //  marker.Rvec.convertTo(Rvec64, CV_64FC1);
-  //  cv::Rodrigues(Rvec64, rot);
-  //  cv::Mat tran64;
-  //  marker.Tvec.convertTo(tran64, CV_64FC1);
-
-  //  tf::Matrix3x3 tf_rot(rot.at<double>(0,0), rot.at<double>(0,1),
-  //  rot.at<double>(0,2),
-  //                       rot.at<double>(1,0), rot.at<double>(1,1),
-  //                       rot.at<double>(1,2),
-  //                       rot.at<double>(2,0), rot.at<double>(2,1),
-  //                       rot.at<double>(2,2));
-
-  //  tf::Vector3 tf_orig(tran64.at<double>(0,0), tran64.at<double>(1,0),
-  //  tran64.at<double>(2,0));
-
-  //  return tf::Transform(tf_rot, tf_orig);
+  return tf::Transform(tf_rot, tf_orig);
 }
 
 } // aruco_mapping

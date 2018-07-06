@@ -42,7 +42,7 @@ main(int argc, char **argv)
   ros::NodeHandle nh;
       
   // Aruco mapping object
-  aruco_mapping::ArucoMappingFixed obj(nh);
+  aruco_mapping::ArucoMappingStatic obj(nh);
 
   ros::spin();
 

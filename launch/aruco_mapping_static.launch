@@ -8,7 +8,7 @@
   <arg name="camera_info" default="/camera_info" />
   <arg name="debug_image_topic" default="debug_image" />
   <arg name="image_topic" default="/camera/image" />
-  <arg name="image_transport" default="compressed" />
+  <arg name="image_transport" default="raw" />
   <arg name="num_of_markers" default="200" />
   <arg name="marker_size" default="0.11" />
   <arg name="calibration_file" default="$(find aruco_mapping)/data/raspicam_v1_underwater.ini" />
