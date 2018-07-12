@@ -3,6 +3,7 @@
   <arg name="base_marker" default="-1" />
   <arg name="rviz" default="false"/>
   <arg name="gui" default="false" />
+  <arg name="publish_base_marker" default="false" />
   <arg name="debug_image" default="true" />
   <arg name="camera_info" default="" />
   <arg name="debug_image_topic" default="debug_image" />
@@ -11,6 +12,10 @@
   <arg name="num_of_markers" default="200" />
   <arg name="marker_size" default="0.1095" />
   <arg name="calibration_file" default="$(find aruco_mapping)/data/raspicam_v1_underwater.ini" />
+
+  <node if="$(arg publish_base_marker)" pkg="tf2_ros" type="static_transform_publisher" name="local_origin_base_marker_broadcaster" required="true" output="screen" args="0.393 1.033 -0.827 0.008 0.0 1.570 local_origin base_marker"/>
+
+  <node if="$(arg publish_base_marker)" pkg="tf2_ros" type="static_transform_publisher" name="camera_rov_broadcaster" required="true" output="screen" args="0.0 0.253 -0.127 -1.57079632648966 -1.250 0.0 camera rov"/>
 
   <!-- RVIZ -->
   <node if="$(arg rviz)" name="rviz" pkg="rviz" type="rviz" args="-d $(find aruco_mapping)/launch/aruco_config.rviz" />
