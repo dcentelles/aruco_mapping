@@ -12,6 +12,8 @@
   <arg name="num_of_markers" default="200" />
   <arg name="marker_size" default="0.1095" />
   <arg name="calibration_file" default="$(find aruco_mapping)/data/raspicam_v1_underwater.ini" />
+  <arg name="threshold_1" default="13" />
+  <arg name="threshold_2" default="3" />
 
   <!-- base_marker == aruco_marker_19 -->
   <node if="$(arg publish_base_marker)" pkg="tf2_ros" type="static_transform_publisher" name="local_origin_base_marker_broadcaster" required="true" output="screen" args="0.393 1.033 -0.827 0.008 0.0 1.570 local_origin base_marker"/>
@@ -38,6 +40,8 @@
     <param name="camera_info" type="string" value="$(arg camera_info)" />
     <param name="debug_image" type="bool" value="$(arg debug_image)" />
     <param name="debug_image_topic" type="string" value="$(arg debug_image_topic)" />
+    <param name="threshold_1" type="double" value="$(arg threshold_1)" />
+    <param name="threshold_2" type="double" value="$(arg threshold_2)" />
 
   </node>  
 </launch>

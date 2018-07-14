@@ -40,6 +40,22 @@
 using namespace std;
 namespace aruco_mapping {
 
+void cvTackBarEvents(int pos, void *userData) {
+  (void)(pos);
+  ArucoMapping *ammd = static_cast<ArucoMapping *>(userData);
+  //  if (ammd->get_iThresParam1() < 3)
+  //    ammd->set_iThresParam1(3);
+  //  if (ammd->get_iThresParam1() % 2 != 1) {
+  //    int p = ammd->get_iThresParam1();
+  //    ammd->set_iThresParam1(p++);
+  //  }
+  //  if (ammd->get_iThresParam2() < 1)
+  //    ammd->set_iThresParam2(1);
+  ammd->set_thresParam1(ammd->get_iThresParam1());
+  ammd->set_thresParam2(ammd->get_iThresParam2());
+  ammd->setMarkerDetectorThreshold();
+}
+
 ArucoMapping::ArucoMapping(ros::NodeHandle &nh)
     : listener_(new tf::TransformListener), // Initialize TF Listener
       num_of_markers_(10),                  // Number of used markers
@@ -51,7 +67,8 @@ ArucoMapping::ArucoMapping(ros::NodeHandle &nh)
       marker_counter_(0),            // Reset marker counter
       closest_camera_id_(-1), // Reset closest camera id (camera_{marker's id})
       gui_(true), debug_image_(true), debug_image_topic_("debug_image"),
-      image_topic_("/image_raw"), nh_("~"), desired_base_marker_id_(-1)
+      image_topic_("/image_raw"), nh_("~"), desired_base_marker_id_(-1),
+      _thres_param_1(10), _thres_param_2(3)
 
 {
   double temp_marker_size;
@@ -67,6 +84,8 @@ ArucoMapping::ArucoMapping(ros::NodeHandle &nh)
   nh_.getParam("image_topic", image_topic_);
   nh_.getParam("camera_info", camera_info_);
   nh_.getParam("base_marker", desired_base_marker_id_);
+  nh_.getParam("threshold_1", _thres_param_1);
+  nh_.getParam("threshold_2", _thres_param_2);
   // Double to float conversion
   marker_size_ = float(temp_marker_size);
 
@@ -88,10 +107,13 @@ ArucoMapping::ArucoMapping(ros::NodeHandle &nh)
       nh.advertise<visualization_msgs::Marker>("aruco_markers", 1);
 
   // detector_.setDetectionMode(aruco::DetectionMode::DM_NORMAL);
+  detector_.setThresholdMethod(
+      aruco::MarkerDetector::ThresholdMethods::ADPT_THRES);
   detector_.setDictionary(aruco::Dictionary::DICT_TYPES::ARUCO_MIP_36h12);
   detector_.setCornerRefinementMethod(
       aruco::MarkerDetector::CornerRefinementMethod::LINES);
   detector_.setMinMaxSize(0.03, 0.8);
+  detector_.setThresholdParams(_thres_param_1, _thres_param_2);
 
   if (camera_info_ != "") {
     sensor_msgs::CameraInfoConstPtr msg =
@@ -106,8 +128,14 @@ ArucoMapping::ArucoMapping(ros::NodeHandle &nh)
   }
 
   // Initialize OpenCV window
-  if (gui_)
-    cv::namedWindow("BGR8", CV_WINDOW_AUTOSIZE);
+  if (gui_) {
+    cv::namedWindow("Display", CV_WINDOW_NORMAL | CV_WINDOW_KEEPRATIO);
+    detector_.getThresholdParams(_thres_param_1, _thres_param_2);
+    cv::createTrackbar("ThresParam1", "Display", &_i_thres_param_1, 20,
+                       cvTackBarEvents, this);
+    cv::createTrackbar("ThresParam2", "Display", &_i_thres_param_2, 20,
+                       cvTackBarEvents, this);
+  }
 
   // Resize marker container
   markers_.resize(num_of_markers_);
@@ -244,7 +272,34 @@ bool ArucoMapping::processImage(cv::Mat input_image) {
   }
 
   if (gui_) {
-    cv::imshow("BGR8", displayimg);
+    cv::Mat img_display(input_image.rows, 3. / 2. * input_image.cols, CV_8UC3);
+    cv::Mat left(img_display,
+                 cv::Rect(0, 0, input_image.cols, input_image.rows));
+    displayimg.copyTo(left);
+    cv::Rect trr(input_image.cols, 0, input_image.cols / 2,
+                 input_image.rows / 2);
+    cv::Mat topRight(img_display, trr);
+    cv::Rect lrr(input_image.cols, input_image.rows / 2, input_image.cols / 2,
+                 input_image.rows / 2);
+    cv::Mat lowRight(img_display, lrr);
+    cv::Mat aux;
+    cv::cvtColor(detector_.getThresholdedImage(), aux, cv::COLOR_GRAY2RGB);
+    cv::resize(aux, lowRight,
+               cv::Size(input_image.cols / 2, input_image.rows / 2));
+    cv::resize(input_image, topRight,
+               cv::Size(input_image.cols / 2, input_image.rows / 2));
+
+    // Add text for identifying images
+    cv::putText(lowRight, "thresholded image",
+                cv::Point2f(20, lowRight.rows - 20), cv::FONT_HERSHEY_SIMPLEX,
+                1, cv::Scalar(255, 255, 255), 2);
+    cv::putText(topRight, "original image", cv::Point2f(20, topRight.rows - 20),
+                cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(255, 255, 255), 2);
+    cv::putText(left, "Detections", cv::Point2f(20, input_image.rows - 20),
+                cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(255, 255, 255), 2);
+
+    // Display images
+    cv::imshow("Display", img_display);
     cv::waitKey(20);
   }
   if (debug_image_) {
@@ -309,10 +364,8 @@ bool ArucoMapping::processImage(cv::Mat input_image) {
     position.setZ(0);
 
     tf::Quaternion rotation;
-    rotation.setX(0);
-    rotation.setY(0);
-    rotation.setZ(0);
-    rotation.setW(1);
+    rotation.setRPY(0, 0, 0);
+    rotation.normalize();
 
     markers_[0].tf_to_previous.setOrigin(position);
     markers_[0].tf_to_previous.setRotation(rotation);
@@ -333,7 +386,6 @@ bool ArucoMapping::processImage(cv::Mat input_image) {
     markers_[0].previous_marker_id = THIS_IS_FIRST_MARKER;
   }
 
-  publishTfs();
   //------------------------------------------------------
   // FOR EVERY MARKER DO
   //------------------------------------------------------
@@ -580,11 +632,12 @@ void ArucoMapping::publishTfs() {
     marker_tf_id << "marker_" << minfo->marker_id;
     // Older marker - or base_marker
     std::stringstream marker_tf_id_old;
-    marker_tf_id_old << "marker_" << minfo->previous_marker_id;
-    broadcaster_.sendTransform(
-        tf::StampedTransform(minfo->tf_to_previous, ros::Time::now(),
-                             marker_tf_id_old.str(), marker_tf_id.str()));
-
+    if (minfo->previous_marker_id != -1) {
+      marker_tf_id_old << "marker_" << minfo->previous_marker_id;
+      broadcaster_.sendTransform(
+          tf::StampedTransform(minfo->tf_to_previous, ros::Time::now(),
+                               marker_tf_id_old.str(), marker_tf_id.str()));
+    }
     // Position of camera to its marker
     std::stringstream camera_tf_id;
     camera_tf_id << "camera_" << minfo->marker_id;
