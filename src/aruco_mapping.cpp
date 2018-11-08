@@ -465,13 +465,13 @@ bool ArucoMapping::processImage(cv::Mat input_image) {
         marker_info->current_camera_tf_inverse, ros::Time::now(),
         marker_tf_id.str(), camera_tf_id.str()));
 
+    any_known_marker_visible = true;
     // Testing, if is possible calculate position of a new marker to old known
     // marker
     for (int k = 0; k < index; k++) {
       auto minfo = &markers_[k];
       if ((minfo->visible == true)) {
         if (minfo->previous_marker_id != -1) {
-          any_known_marker_visible = true;
           camera_tf_id_old << "camera_" << minfo->marker_id;
           marker_tf_id_old << "marker_" << minfo->marker_id;
           marker_info->previous_marker_id = minfo->marker_id;
