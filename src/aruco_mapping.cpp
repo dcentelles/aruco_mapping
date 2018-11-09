@@ -378,6 +378,8 @@ bool ArucoMapping::processImage(cv::Mat input_image) {
 
     // Set sign of visibility of first marker
     markers_[0].visible = true;
+    markers_[0].baseLinked = true;
+    base_marker_ = &markers_[0];
 
     ROS_INFO_STREAM("First marker with ID: " << markers_[0].marker_id
                                              << " detected");
@@ -422,8 +424,12 @@ bool ArucoMapping::processImage(cv::Mat input_image) {
     // Change visibility flag of new marker
     for (size_t j = 0; j < marker_counter_; j++) {
       for (size_t k = 0; k < temp_markers.size(); k++) {
-        if (markers_[j].marker_id == temp_markers[k].id)
+        if (markers_[j].marker_id == temp_markers[k].id) {
           markers_[j].visible = true;
+          if (base_marker_->visible) {
+            markers_[j].baseLinked = true;
+          }
+        }
       }
     }
 
@@ -475,6 +481,9 @@ bool ArucoMapping::processImage(cv::Mat input_image) {
           camera_tf_id_old << "camera_" << minfo->marker_id;
           marker_tf_id_old << "marker_" << minfo->marker_id;
           marker_info->previous_marker_id = minfo->marker_id;
+          if (minfo->baseLinked)
+            marker_info->baseLinked = true;
+
           last_marker_index = k;
 
           // TF from marker to its camera
@@ -552,7 +561,7 @@ bool ArucoMapping::processImage(cv::Mat input_image) {
             marker_info->current_camera_pose.orientation.w =
                 marker_quaternion.getW();
           } catch (tf::TransformException &e) {
-            ROS_ERROR("Not able to lookup transform: %s", e.what());
+            ROS_ERROR("visible: Not able to lookup transform: %s", e.what());
           }
           break;
         }
@@ -570,11 +579,13 @@ bool ArucoMapping::processImage(cv::Mat input_image) {
   //------------------------------------------------------
   if (any_known_marker_visible) {
     double minimal_distance = INIT_MIN_SIZE_VALUE;
+    bool baseLinked = false;
     for (int k = 0; k < num_of_markers_; k++) {
       double a, b, c, size;
       auto minfo = &markers_[k];
       // If marker is visible, distance is calculated
-      if (minfo->visible == true) {
+      if (minfo->visible == true && minfo->baseLinked) {
+        baseLinked = true;
         a = minfo->current_camera_pose.position.x;
         b = minfo->current_camera_pose.position.y;
         c = minfo->current_camera_pose.position.z;
@@ -585,20 +596,23 @@ bool ArucoMapping::processImage(cv::Mat input_image) {
         }
       }
     }
-    std::stringstream closest_camera_tf_name;
-    closest_camera_tf_name << "camera_" << closest_camera_id_;
+    if (baseLinked) {
+      std::stringstream closest_camera_tf_name;
+      closest_camera_tf_name << "camera_" << closest_camera_id_;
 
-    listener_->waitForTransform("base_marker", closest_camera_tf_name.str(),
-                                ros::Time(0),
-                                ros::Duration(WAIT_FOR_TRANSFORM_INTERVAL));
-    try {
-      listener_->lookupTransform("base_marker", closest_camera_tf_name.str(),
-                                 ros::Time(0), base_marker_position_transform_);
-      broadcaster_.sendTransform(
-          tf::StampedTransform(base_marker_position_transform_,
-                               ros::Time::now(), "base_marker", "camera"));
-    } catch (tf::TransformException &ex) {
-      ROS_ERROR("Not able to lookup transform");
+      listener_->waitForTransform("base_marker", closest_camera_tf_name.str(),
+                                  ros::Time(0),
+                                  ros::Duration(WAIT_FOR_TRANSFORM_INTERVAL));
+      try {
+        listener_->lookupTransform("base_marker", closest_camera_tf_name.str(),
+                                   ros::Time(0),
+                                   base_marker_position_transform_);
+        broadcaster_.sendTransform(
+            tf::StampedTransform(base_marker_position_transform_,
+                                 ros::Time::now(), "base_marker", "camera"));
+      } catch (tf::TransformException &ex) {
+        ROS_ERROR("base: Not able to lookup transform");
+      }
     }
   }
   publishTfs();

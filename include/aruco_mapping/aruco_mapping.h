@@ -81,6 +81,7 @@ public:
         current_camera_pose; // Position of camera with respect to the marker
     tf::Transform current_camera_tf; // TF of camera with respect to the marker
     tf::Transform current_camera_tf_inverse;
+    bool baseLinked = false;
   };
 
 public:
@@ -164,6 +165,7 @@ private:
 
   aruco::MarkerDetector detector_;
   cv::Mat last_image_;
+  MarkerInfo *base_marker_;
 
   int marker_counter_;
   int marker_counter_previous_;
@@ -190,7 +192,6 @@ private:
   static constexpr double RVIZ_MARKER_COLOR_A = 1.0;
 
   static constexpr double THIS_IS_FIRST_MARKER = -2;
-
 
   double _thres_param_1, _thres_param_2;
   int _i_thres_param_1, _i_thres_param_2;
