@@ -80,9 +80,9 @@ ArucoMappingStatic::ArucoMappingStatic(ros::NodeHandle &nh)
 
   // ARUCO detector settings
   detector_.setDictionary(aruco::Dictionary::DICT_TYPES::ARUCO_MIP_36h12);
-  detector_.setCornerRefinementMethod(
-      aruco::MarkerDetector::CornerRefinementMethod::LINES);
-  detector_.setMinMaxSize(0.03, 0.8);
+  //  detector_.setCornerRefinementMethod(
+  //      aruco::MarkerDetector::CornerRefinementMethod::LINES);
+  //  detector_.setMinMaxSize(0.03, 0.8);
   //  detector_.setThresholdParams(50,50);
   //  detector_.setThresholdParamRange(10,10); //With 10 10 is slow but more
   //  detections
@@ -198,8 +198,8 @@ bool ArucoMappingStatic::processImage(cv::Mat input_image) {
   std::vector<aruco::Marker> temp_markers;
 
   // Detect markers
-  detector_.detect(input_image, temp_markers, aruco_calib_params_,
-                   marker_size_);
+  temp_markers =
+      detector_.detect(input_image, aruco_calib_params_, marker_size_);
 
   cv::Mat displayimg = input_image.clone();
 
@@ -230,8 +230,7 @@ bool ArucoMappingStatic::processImage(cv::Mat input_image) {
   }
   if (debug_image_) {
     debug_image_msg_ =
-        cv_bridge::CvImage(std_msgs::Header(), "bgr8", displayimg)
-            .toImageMsg();
+        cv_bridge::CvImage(std_msgs::Header(), "bgr8", displayimg).toImageMsg();
     marker_debug_image_pub_.publish(debug_image_msg_);
   }
 
@@ -239,7 +238,6 @@ bool ArucoMappingStatic::processImage(cv::Mat input_image) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
-
 
 tf::Transform ArucoMappingStatic::arucoMarker2Tf(const aruco::Marker &marker) {
   //  return transform;
@@ -261,6 +259,6 @@ tf::Transform ArucoMappingStatic::arucoMarker2Tf(const aruco::Marker &marker) {
   return tf::Transform(tf_rot, tf_orig);
 }
 
-} // aruco_mapping
+} // namespace aruco_mapping
 
 #endif // ARUCO_MAPPING_CPP

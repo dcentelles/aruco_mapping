@@ -99,7 +99,7 @@ public:
   void set_thresParam1(int p) { _thres_param_1 = p; }
   void set_thresParam2(int p) { _thres_param_2 = p; }
   void setMarkerDetectorThreshold() {
-    detector_.setThresholdParams(_thres_param_1, _thres_param_2);
+    //detector_.setThresholdParams(_thres_param_1, _thres_param_2);
   }
 
   /** \brief Callback function to handle image processing*/

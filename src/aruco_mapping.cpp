@@ -107,13 +107,13 @@ ArucoMapping::ArucoMapping(ros::NodeHandle &nh)
       nh.advertise<visualization_msgs::Marker>("aruco_markers", 1);
 
   // detector_.setDetectionMode(aruco::DetectionMode::DM_NORMAL);
-  detector_.setThresholdMethod(
-      aruco::MarkerDetector::ThresholdMethods::ADPT_THRES);
+//  detector_.setThresholdMethod(
+//      aruco::MarkerDetector::ThresholdMethods::ADPT_THRES);
   detector_.setDictionary(aruco::Dictionary::DICT_TYPES::ARUCO_MIP_36h12);
-  detector_.setCornerRefinementMethod(
-      aruco::MarkerDetector::CornerRefinementMethod::LINES);
-  detector_.setMinMaxSize(0.03, 0.8);
-  detector_.setThresholdParams(_thres_param_1, _thres_param_2);
+//  detector_.setCornerRefinementMethod(
+//      aruco::MarkerDetector::CornerRefinementMethod::LINES);
+//  detector_.setMinMaxSize(0.03, 0.8);
+//  detector_.setThresholdParams(_thres_param_1, _thres_param_2);
 
   if (camera_info_ != "") {
     sensor_msgs::CameraInfoConstPtr msg =
@@ -130,7 +130,7 @@ ArucoMapping::ArucoMapping(ros::NodeHandle &nh)
   // Initialize OpenCV window
   if (gui_) {
     cv::namedWindow("Display", CV_WINDOW_NORMAL | CV_WINDOW_KEEPRATIO);
-    detector_.getThresholdParams(_thres_param_1, _thres_param_2);
+    //detector_.getThresholdParams(_thres_param_1, _thres_param_2);
     cv::createTrackbar("ThresParam1", "Display", &_i_thres_param_1, 20,
                        cvTackBarEvents, this);
     cv::createTrackbar("ThresParam2", "Display", &_i_thres_param_2, 20,
@@ -250,8 +250,7 @@ bool ArucoMapping::processImage(cv::Mat input_image) {
   marker_counter_previous_ = marker_counter_;
 
   // Detect markers
-  detector_.detect(input_image, temp_markers, aruco_calib_params_,
-                   marker_size_);
+  temp_markers = detector_.detect(input_image, aruco_calib_params_, marker_size_);
 
   // If no marker found, print statement
   if (temp_markers.size() == 0)
