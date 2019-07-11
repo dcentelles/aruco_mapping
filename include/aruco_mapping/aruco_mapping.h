@@ -143,7 +143,7 @@ private:
   float marker_size_;
   int num_of_markers_, desired_base_marker_id_;
   bool gui_, debug_image_;
-  std::string debug_image_topic_, image_topic_, camera_info_;
+  std::string debug_image_topic_, image_topic_, camera_info_, base_marker_name_, marker_prefix_;
   sensor_msgs::ImagePtr debug_image_msg_;
   ros::NodeHandle nh_;
 

@@ -67,7 +67,8 @@ ArucoMapping::ArucoMapping(ros::NodeHandle &nh)
       marker_counter_(0),            // Reset marker counter
       closest_camera_id_(-1), // Reset closest camera id (camera_{marker's id})
       gui_(true), debug_image_(true), debug_image_topic_("debug_image"),
-      image_topic_("/image_raw"), nh_("~"), desired_base_marker_id_(-1),
+      image_topic_("/image_raw"), base_marker_name_("base_marker"),
+      marker_prefix_("aruco_marker_"), nh_("~"), desired_base_marker_id_(-1),
       _thres_param_1(10), _thres_param_2(3)
 
 {
@@ -84,6 +85,7 @@ ArucoMapping::ArucoMapping(ros::NodeHandle &nh)
   nh_.getParam("image_topic", image_topic_);
   nh_.getParam("camera_info", camera_info_);
   nh_.getParam("base_marker", desired_base_marker_id_);
+  nh_.getParam("marker_prefix", marker_prefix_);
   nh_.getParam("threshold_1", _thres_param_1);
   nh_.getParam("threshold_2", _thres_param_2);
   // Double to float conversion
@@ -107,8 +109,8 @@ ArucoMapping::ArucoMapping(ros::NodeHandle &nh)
       nh.advertise<visualization_msgs::Marker>("aruco_markers", 1);
 
   // detector_.setDetectionMode(aruco::DetectionMode::DM_NORMAL);
-//  detector_.setThresholdMethod(
-//      aruco::MarkerDetector::ThresholdMethods::ADPT_THRES);
+  //  detector_.setThresholdMethod(
+  //      aruco::MarkerDetector::ThresholdMethods::ADPT_THRES);
   detector_.setDictionary(aruco::Dictionary::DICT_TYPES::ARUCO_MIP_36h12);
   detector_.setDetectionMode(aruco::DetectionMode::DM_NORMAL);
   aruco::MarkerDetector::Params params;
@@ -116,10 +118,10 @@ ArucoMapping::ArucoMapping(ros::NodeHandle &nh)
   params.setCornerRefinementMethod(aruco::CORNER_LINES);
   params.detectEnclosedMarkers(false);
 
-//  detector_.setCornerRefinementMethod(
-//      aruco::MarkerDetector::CornerRefinementMethod::LINES);
-//  detector_.setMinMaxSize(0.03, 0.8);
-//  detector_.setThresholdParams(_thres_param_1, _thres_param_2);
+  //  detector_.setCornerRefinementMethod(
+  //      aruco::MarkerDetector::CornerRefinementMethod::LINES);
+  //  detector_.setMinMaxSize(0.03, 0.8);
+  //  detector_.setThresholdParams(_thres_param_1, _thres_param_2);
 
   if (camera_info_ != "") {
     sensor_msgs::CameraInfoConstPtr msg =
@@ -136,7 +138,7 @@ ArucoMapping::ArucoMapping(ros::NodeHandle &nh)
   // Initialize OpenCV window
   if (gui_) {
     cv::namedWindow("Display", CV_WINDOW_NORMAL | CV_WINDOW_KEEPRATIO);
-    //detector_.getThresholdParams(_thres_param_1, _thres_param_2);
+    // detector_.getThresholdParams(_thres_param_1, _thres_param_2);
     cv::createTrackbar("ThresParam1", "Display", &_i_thres_param_1, 20,
                        cvTackBarEvents, this);
     cv::createTrackbar("ThresParam2", "Display", &_i_thres_param_2, 20,
@@ -256,7 +258,8 @@ bool ArucoMapping::processImage(cv::Mat input_image) {
   marker_counter_previous_ = marker_counter_;
 
   // Detect markers
-  temp_markers = detector_.detect(input_image, aruco_calib_params_, marker_size_);
+  temp_markers =
+      detector_.detect(input_image, aruco_calib_params_, marker_size_);
 
   // If no marker found, print statement
   if (temp_markers.size() == 0)
@@ -331,8 +334,9 @@ bool ArucoMapping::processImage(cv::Mat input_image) {
       // Detect lowest marker ID
       base_marker_id_ = temp_markers[0].id;
       for (size_t i = 1; i < temp_markers.size(); i++) {
-        if (temp_markers[i].id < base_marker_id_)
+        if (temp_markers[i].id < base_marker_id_) {
           base_marker_id_ = temp_markers[i].id;
+        }
       }
     }
 
@@ -391,6 +395,8 @@ bool ArucoMapping::processImage(cv::Mat input_image) {
 
     // First marker does not have any previous marker
     markers_[0].previous_marker_id = THIS_IS_FIRST_MARKER;
+
+    base_marker_name_ = marker_prefix_ + std::to_string(base_marker_id_);
   }
 
   //------------------------------------------------------
@@ -605,16 +611,16 @@ bool ArucoMapping::processImage(cv::Mat input_image) {
       std::stringstream closest_camera_tf_name;
       closest_camera_tf_name << "camera_" << closest_camera_id_;
 
-      listener_->waitForTransform("base_marker", closest_camera_tf_name.str(),
-                                  ros::Time(0),
+      listener_->waitForTransform(base_marker_name_,
+                                  closest_camera_tf_name.str(), ros::Time(0),
                                   ros::Duration(WAIT_FOR_TRANSFORM_INTERVAL));
       try {
-        listener_->lookupTransform("base_marker", closest_camera_tf_name.str(),
-                                   ros::Time(0),
+        listener_->lookupTransform(base_marker_name_,
+                                   closest_camera_tf_name.str(), ros::Time(0),
                                    base_marker_position_transform_);
-        broadcaster_.sendTransform(
-            tf::StampedTransform(base_marker_position_transform_,
-                                 ros::Time::now(), "base_marker", "camera"));
+        broadcaster_.sendTransform(tf::StampedTransform(
+            base_marker_position_transform_, ros::Time::now(),
+            base_marker_name_, "camera"));
       } catch (tf::TransformException &ex) {
         ROS_ERROR("base: Not able to lookup transform");
       }
@@ -633,7 +639,7 @@ void ArucoMapping::publishTfs() {
     marker_tf_id << "marker_" << markers_[0].marker_id;
     broadcaster_.sendTransform(
         tf::StampedTransform(markers_[0].tf_to_previous, ros::Time::now(),
-                             "base_marker", marker_tf_id.str()));
+                             base_marker_name_, marker_tf_id.str()));
 
     std::stringstream camera_tf_id;
     camera_tf_id << "camera_" << markers_[0].marker_id;
@@ -675,7 +681,7 @@ void ArucoMapping::publishMarker(geometry_msgs::Pose marker_pose, int marker_id,
   visualization_msgs::Marker vis_marker;
 
   if (index == 0)
-    vis_marker.header.frame_id = "base_marker";
+    vis_marker.header.frame_id = base_marker_name_;
   else {
     std::stringstream marker_tf_id_old;
     marker_tf_id_old << "marker_" << markers_[index].previous_marker_id;
@@ -724,6 +730,6 @@ tf::Transform ArucoMapping::arucoMarker2Tf(const aruco::Marker &marker) {
   return tf::Transform(tf_rot, tf_orig);
 }
 
-} // aruco_mapping
+} // namespace aruco_mapping
 
 #endif // ARUCO_MAPPING_CPP

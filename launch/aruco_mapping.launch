@@ -1,9 +1,14 @@
 <?xml version="1.0"?>
 <launch> 
   <arg name="base_marker" default="-1" />
+  <arg name="marker_prefix" default="aruco_marker_" />
+
+  <arg name="publish_base_marker" default="false" />
+  <!-- base_marker_name only used when publish_base_marker is true -->
+  <arg name="base_marker_name" default="base_marker"/>
+
   <arg name="rviz" default="false"/>
   <arg name="gui" default="false" />
-  <arg name="publish_base_marker" default="true" />
   <arg name="debug_image" default="true" />
   <arg name="camera_info" default="" />
   <arg name="debug_image_topic" default="debug_image" />
@@ -18,7 +23,7 @@
 
   <group if="$(arg publish_base_marker)">
 	  <!-- base_marker == aruco_marker_19 -->
-	  <node pkg="tf2_ros" type="static_transform_publisher" name="local_origin_base_marker_broadcaster" required="true" output="screen" args="0.393 1.033 -0.827 0.008 0.0 1.570 local_origin base_marker"/>
+	  <node pkg="tf2_ros" type="static_transform_publisher" name="local_origin_base_marker_broadcaster" required="true" output="screen" args="0.393 1.033 -0.827 0.008 0.0 1.570 local_origin $(base_marker_name)"/>
 
 
 	  <node if="$(arg irsrov)" pkg="tf2_ros" type="static_transform_publisher" name="camera_rov_broadcaster" required="true" output="screen" args="0.0 0.253 -0.127 -1.57079632648966 -1.250 0.0 camera rov"/>
@@ -32,6 +37,7 @@
   <!-- ArUco mapping -->
   <node pkg="aruco_mapping" type="aruco_mapping" name="aruco_mapping" output="screen">
     <param name="base_marker" type="int" value="$(arg base_marker)"/>
+    <param name="marker_prefix" type="string" value="$(arg marker_prefix)"/>
     <param name="image_topic" type="string" value="$(arg image_topic)"/>
     <param name="image_transport" type="string" value="$(arg image_transport)" />
     <param name="calibration_file" type="string" value="$(arg calibration_file)"/>
