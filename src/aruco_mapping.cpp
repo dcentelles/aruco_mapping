@@ -73,17 +73,17 @@ ArucoMapping::ArucoMapping(ros::NodeHandle &nh)
   double temp_marker_size;
 
   // Parse params from launch file
+  nh_.getParam("base_marker", desired_base_marker_id_);
   nh_.getParam("calibration_file", calib_filename_);
+  nh_.getParam("camera_info", camera_info_);
+  nh_.getParam("debug_image", debug_image_);
+  nh_.getParam("debug_image_topic", debug_image_topic_);
+  nh_.getParam("gui", gui_);
+  nh_.getParam("image_topic", image_topic_);
+  nh_.getParam("marker_prefix", marker_prefix_);
   nh_.getParam("marker_size", temp_marker_size);
   nh_.getParam("num_of_markers", num_of_markers_);
   nh_.getParam("pace_type", space_type_);
-  nh_.getParam("gui", gui_);
-  nh_.getParam("debug_image", debug_image_);
-  nh_.getParam("debug_image_topic", debug_image_topic_);
-  nh_.getParam("image_topic", image_topic_);
-  nh_.getParam("camera_info", camera_info_);
-  nh_.getParam("base_marker", desired_base_marker_id_);
-  nh_.getParam("marker_prefix", marker_prefix_);
   nh_.getParam("threshold_1", _thres_param_1);
   nh_.getParam("threshold_2", _thres_param_2);
   // Double to float conversion

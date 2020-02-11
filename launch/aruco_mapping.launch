@@ -8,18 +8,19 @@
   <arg name="base_marker_name" default="base_marker"/>
 
   <arg name="rviz" default="false"/>
-  <arg name="gui" default="false" />
-  <arg name="debug_image" default="true" />
+
+  <arg name="calibration_file" default="$(find aruco_mapping)/data/raspicam_v1_underwater.ini" />
   <arg name="camera_info" default="" />
+  <arg name="debug_image" default="true" />
   <arg name="debug_image_topic" default="debug_image" />
+  <arg name="gui" default="false" />
   <arg name="image_topic" default="/camera/image" />
   <arg name="image_transport" default="raw" />
-  <arg name="num_of_markers" default="200" />
+  <arg name="irsrov" default="false" />
   <arg name="marker_size" default="0.1095" />
-  <arg name="calibration_file" default="$(find aruco_mapping)/data/raspicam_v1_underwater.ini" />
+  <arg name="num_of_markers" default="200" />
   <arg name="threshold_1" default="13" />
   <arg name="threshold_2" default="3" />
-  <arg name="irsrov" default="false" />
 
   <group if="$(arg publish_base_marker)">
 	  <!-- base_marker == aruco_marker_19 -->
@@ -37,21 +38,21 @@
   <!-- ArUco mapping -->
   <node pkg="aruco_mapping" type="aruco_mapping" name="aruco_mapping" output="screen">
     <param name="base_marker" type="int" value="$(arg base_marker)"/>
-    <param name="marker_prefix" type="string" value="$(arg marker_prefix)"/>
-    <param name="image_topic" type="string" value="$(arg image_topic)"/>
-    <param name="image_transport" type="string" value="$(arg image_transport)" />
     <param name="calibration_file" type="string" value="$(arg calibration_file)"/>
-    <param name="num_of_markers" type="int" value="$(arg num_of_markers)" />
-    <param name="marker_size" type="double" value="$(arg marker_size)"/>
-    <param name="roi_allowed" type="bool" value="false" />
-    <param name="roi_x" type="int" value="0" />
-    <param name="roi_y" type="int" value="0" />
-    <param name="roi_width" type="int" value="640" />
-    <param name="roi_height" type="int" value="480" />
-    <param name="gui" type="bool" value="$(arg gui)" />
     <param name="camera_info" type="string" value="$(arg camera_info)" />
     <param name="debug_image" type="bool" value="$(arg debug_image)" />
     <param name="debug_image_topic" type="string" value="$(arg debug_image_topic)" />
+    <param name="gui" type="bool" value="$(arg gui)" />
+    <param name="image_topic" type="string" value="$(arg image_topic)"/>
+    <param name="image_transport" type="string" value="$(arg image_transport)" />
+    <param name="marker_prefix" type="string" value="$(arg marker_prefix)"/>
+    <param name="marker_size" type="double" value="$(arg marker_size)"/>
+    <param name="num_of_markers" type="int" value="$(arg num_of_markers)" />
+    <param name="roi_allowed" type="bool" value="false" />
+    <param name="roi_height" type="int" value="480" />
+    <param name="roi_width" type="int" value="640" />
+    <param name="roi_x" type="int" value="0" />
+    <param name="roi_y" type="int" value="0" />
     <param name="threshold_1" type="double" value="$(arg threshold_1)" />
     <param name="threshold_2" type="double" value="$(arg threshold_2)" />
 
