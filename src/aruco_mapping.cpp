@@ -37,7 +37,9 @@
 #include <aruco_mapping/aruco_mapping.h>
 #include <sensor_msgs/CameraInfo.h>
 
-using namespace std;
+using std::cout;
+using std::endl;
+
 namespace aruco_mapping {
 
 void cvTackBarEvents(int pos, void *userData) {
