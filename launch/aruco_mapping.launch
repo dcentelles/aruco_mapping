@@ -19,6 +19,7 @@
   <arg name="irsrov" default="false" />
   <arg name="marker_size" default="0.1095" />
   <arg name="num_of_markers" default="200" />
+  <arg name="space_type" default="plane" />
   <arg name="threshold_1" default="13" />
   <arg name="threshold_2" default="3" />
 
@@ -53,6 +54,7 @@
     <param name="roi_width" type="int" value="640" />
     <param name="roi_x" type="int" value="0" />
     <param name="roi_y" type="int" value="0" />
+    <param name="space_type" type="string" value="$(arg space_type)" />
     <param name="threshold_1" type="double" value="$(arg threshold_1)" />
     <param name="threshold_2" type="double" value="$(arg threshold_2)" />
 

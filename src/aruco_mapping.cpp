@@ -83,7 +83,7 @@ ArucoMapping::ArucoMapping(ros::NodeHandle &nh)
   nh_.getParam("marker_prefix", marker_prefix_);
   nh_.getParam("marker_size", temp_marker_size);
   nh_.getParam("num_of_markers", num_of_markers_);
-  nh_.getParam("pace_type", space_type_);
+  nh_.getParam("space_type", space_type_);
   nh_.getParam("threshold_1", _thres_param_1);
   nh_.getParam("threshold_2", _thres_param_2);
   // Double to float conversion
