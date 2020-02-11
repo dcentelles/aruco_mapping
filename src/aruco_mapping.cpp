@@ -647,6 +647,8 @@ void ArucoMapping::publishTfs() {
         markers_[0].current_camera_tf_inverse, ros::Time::now(),
         marker_tf_id.str(), camera_tf_id.str()));
 
+    // Cubes for RVIZ - markers
+    publishMarker(markers_[0].geometry_msg_to_previous, markers_[0].marker_id, 0);
     ros::Duration(BROADCAST_WAIT_INTERVAL).sleep();
   }
 
@@ -670,6 +672,8 @@ void ArucoMapping::publishTfs() {
         tf::StampedTransform(minfo->current_camera_tf_inverse, ros::Time::now(),
                              marker_tf_id.str(), camera_tf_id.str()));
 
+    // Cubes for RVIZ - markers
+    publishMarker(markers_[i].geometry_msg_to_previous, markers_[i].marker_id, i);
     ros::Duration(BROADCAST_WAIT_INTERVAL).sleep();
   }
 }
