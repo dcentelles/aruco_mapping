@@ -1,4 +1,4 @@
-/*********************************************************************************************/ /**
+/*!
  * @file aruco_mapping.cpp
  *
  * Copyright (c)
@@ -17,17 +17,17 @@
  * this list of conditions and the following disclaimer in the documentation
  * and/or other materials provided with the distribution.
 
- THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
- FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
- SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
- CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
- OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- ******************************************************************************/
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+ * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
 
 /* Author: Jan Bacik */
 
@@ -37,7 +37,9 @@
 #include <aruco_mapping/aruco_mapping.h>
 #include <sensor_msgs/CameraInfo.h>
 
-using namespace std;
+using std::cout;
+using std::endl;
+
 namespace aruco_mapping {
 
 void cvTackBarEvents(int pos, void *userData) {
@@ -57,43 +59,41 @@ void cvTackBarEvents(int pos, void *userData) {
 }
 
 ArucoMapping::ArucoMapping(ros::NodeHandle &nh)
-    : listener_(new tf::TransformListener), // Initialize TF Listener
-      num_of_markers_(10),                  // Number of used markers
-      marker_size_(0.1),                    // Marker size in m
-      calib_filename_("empty"),             // Calibration filepath
-      space_type_("plane"),                 // Space type - 2D plane
-      first_marker_detected_(false), // First marker not detected by defualt
-      base_marker_id_(-1),           // Lowest marker ID
-      marker_counter_(0),            // Reset marker counter
-      closest_camera_id_(-1), // Reset closest camera id (camera_{marker's id})
+    : listener_(new tf::TransformListener),   // Initialize TF Listener
+      num_of_markers_(10),                    // Number of used markers
+      marker_size_(0.1),                      // Marker size in m
+      calib_filename_("empty"),               // Calibration filepath
+      space_type_("plane"),                   // Space type - 2D plane
+      first_marker_detected_(false),  // First marker not detected by defualt
+      base_marker_id_(-1),            // Lowest marker ID
+      marker_counter_(0),             // Reset marker counter
+      closest_camera_id_(-1),  // Reset closest camera id (camera_{marker's id})
       gui_(true), debug_image_(true), debug_image_topic_("debug_image"),
       image_topic_("/image_raw"), base_marker_name_("base_marker"),
       marker_prefix_("aruco_marker_"), nh_("~"), desired_base_marker_id_(-1),
-      _thres_param_1(10), _thres_param_2(3)
-
-{
+      _thres_param_1(10), _thres_param_2(3) {
   double temp_marker_size;
 
   // Parse params from launch file
+  nh_.getParam("base_marker", desired_base_marker_id_);
   nh_.getParam("calibration_file", calib_filename_);
-  nh_.getParam("marker_size", temp_marker_size);
-  nh_.getParam("num_of_markers", num_of_markers_);
-  nh_.getParam("pace_type", space_type_);
-  nh_.getParam("gui", gui_);
+  nh_.getParam("camera_info", camera_info_);
   nh_.getParam("debug_image", debug_image_);
   nh_.getParam("debug_image_topic", debug_image_topic_);
+  nh_.getParam("gui", gui_);
   nh_.getParam("image_topic", image_topic_);
-  nh_.getParam("camera_info", camera_info_);
-  nh_.getParam("base_marker", desired_base_marker_id_);
   nh_.getParam("marker_prefix", marker_prefix_);
+  nh_.getParam("marker_size", temp_marker_size);
+  nh_.getParam("num_of_markers", num_of_markers_);
+  nh_.getParam("space_type", space_type_);
   nh_.getParam("threshold_1", _thres_param_1);
   nh_.getParam("threshold_2", _thres_param_2);
   // Double to float conversion
-  marker_size_ = float(temp_marker_size);
+  marker_size_ = static_cast<float>(temp_marker_size);
 
-  if (calib_filename_ == "empty")
+  if (calib_filename_ == "empty") {
     ROS_WARN("Calibration filename empty! Check the launch file paths");
-  else {
+  } else {
     ROS_INFO_STREAM("Calibration file path: " << calib_filename_);
     ROS_INFO_STREAM("Number of markers: " << num_of_markers_);
     ROS_INFO_STREAM("Marker Size: " << marker_size_);
@@ -125,12 +125,11 @@ ArucoMapping::ArucoMapping(ros::NodeHandle &nh)
 
   if (camera_info_ != "") {
     sensor_msgs::CameraInfoConstPtr msg =
-        ros::topic::waitForMessage<sensor_msgs::CameraInfo>(camera_info_,
-                                                            nh_); //, 10.0);
+        ros::topic::waitForMessage<sensor_msgs::CameraInfo>(camera_info_, nh_);
+                                                                     //, 10.0);
     rosCameraInfo2ArucoCamParams(*msg);
     ROS_INFO("Camera parameters from camera_info topic");
   } else {
-
     // Parse data from calibration file
     parseCalibrationFile(calib_filename_);
   }
@@ -266,7 +265,6 @@ bool ArucoMapping::processImage(cv::Mat input_image) {
     ROS_DEBUG("No marker found!");
 
   for (size_t i = 0; i < temp_markers.size(); i++) {
-
     auto detectedMarker = &temp_markers[i];
     detectedMarker->calculateExtrinsics(marker_size_, aruco_calib_params_,
                                         false);
@@ -327,7 +325,7 @@ bool ArucoMapping::processImage(cv::Mat input_image) {
         }
       }
       if (base_marker_id_ !=
-          desired_base_marker_id_) { // base marker not detected yet
+          desired_base_marker_id_) {  // base marker not detected yet
         return false;
       }
     } else {
@@ -647,6 +645,9 @@ void ArucoMapping::publishTfs() {
         markers_[0].current_camera_tf_inverse, ros::Time::now(),
         marker_tf_id.str(), camera_tf_id.str()));
 
+    // Cubes for RVIZ - markers
+    publishMarker(
+      markers_[0].geometry_msg_to_previous, markers_[0].marker_id, 0);
     ros::Duration(BROADCAST_WAIT_INTERVAL).sleep();
   }
 
@@ -670,6 +671,9 @@ void ArucoMapping::publishTfs() {
         tf::StampedTransform(minfo->current_camera_tf_inverse, ros::Time::now(),
                              marker_tf_id.str(), camera_tf_id.str()));
 
+    // Cubes for RVIZ - markers
+    publishMarker(
+      markers_[i].geometry_msg_to_previous, markers_[i].marker_id, i);
     ros::Duration(BROADCAST_WAIT_INTERVAL).sleep();
   }
 }
@@ -680,9 +684,9 @@ void ArucoMapping::publishMarker(geometry_msgs::Pose marker_pose, int marker_id,
                                  int index) {
   visualization_msgs::Marker vis_marker;
 
-  if (index == 0)
+  if (index == 0) {
     vis_marker.header.frame_id = base_marker_name_;
-  else {
+  } else {
     std::stringstream marker_tf_id_old;
     marker_tf_id_old << "marker_" << markers_[index].previous_marker_id;
     vis_marker.header.frame_id = marker_tf_id_old.str();
@@ -730,6 +734,6 @@ tf::Transform ArucoMapping::arucoMarker2Tf(const aruco::Marker &marker) {
   return tf::Transform(tf_rot, tf_orig);
 }
 
-} // namespace aruco_mapping
+}  // namespace aruco_mapping
 
-#endif // ARUCO_MAPPING_CPP
+#endif  // ARUCO_MAPPING_CPP
