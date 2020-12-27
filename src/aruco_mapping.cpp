@@ -113,10 +113,10 @@ ArucoMapping::ArucoMapping(ros::NodeHandle &nh)
   //      aruco::MarkerDetector::ThresholdMethods::ADPT_THRES);
   detector_.setDictionary(aruco::Dictionary::DICT_TYPES::ARUCO_MIP_36h12);
   detector_.setDetectionMode(aruco::DetectionMode::DM_NORMAL);
-  aruco::MarkerDetector::Params params;
-  params.setDetectionMode(aruco::DetectionMode::DM_NORMAL, 0.1);
-  params.setCornerRefinementMethod(aruco::CORNER_LINES);
-  params.detectEnclosedMarkers(false);
+//  aruco::MarkerDetector::Params params;
+//  params.setDetectionMode(aruco::DetectionMode::DM_NORMAL, 0.1);
+//  params.setCornerRefinementMethod(aruco::CORNER_LINES);
+//  params.detectEnclosedMarkers(false);
 
   //  detector_.setCornerRefinementMethod(
   //      aruco::MarkerDetector::CornerRefinementMethod::LINES);
